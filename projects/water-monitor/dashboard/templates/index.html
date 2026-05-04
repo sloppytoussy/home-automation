@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Water Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3e;
+      --text: #e2e8f0; --muted: #8892a4;
+      --blue: #3b82f6; --cyan: #06b6d4; --green: #22c55e;
+      --yellow: #eab308; --red: #ef4444; --purple: #a855f7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between;
+    }
+    header h1 { font-size: 1.2rem; font-weight: 700; color: var(--cyan); }
+    #refresh-badge { font-size: 0.75rem; color: var(--muted); }
+
+    main { max-width: 1200px; margin: 0 auto; padding: 1.5rem 2rem; }
+
+    /* ---- TANK CARDS ---- */
+    .tanks-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+
+    .tank-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.5rem; position: relative; overflow: hidden;
+    }
+    .tank-card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 0.2rem; }
+    .tank-card .capacity { font-size: 0.75rem; color: var(--muted); margin-bottom: 1.2rem; }
+
+    /* Tank body — CSS animated fill */
+    .tank-body {
+      position: relative; width: 100%; height: 180px;
+      background: rgba(6,182,212,0.05);
+      border: 2px solid var(--border); border-radius: 6px 6px 4px 4px;
+      overflow: hidden; margin-bottom: 1rem;
+    }
+    .tank-fill {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      transition: height 1.2s ease;
+      border-radius: 0 0 3px 3px;
+    }
+    .tank-fill::before {
+      content: ''; position: absolute; top: -8px; left: -50%;
+      width: 200%; height: 16px;
+      background: inherit; border-radius: 50%;
+      opacity: 0.5;
+      animation: wave 3s linear infinite;
+    }
+    @keyframes wave {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(50%); }
+    }
+    .tank-fill.ok     { background: rgba(34,197,94,0.35); }
+    .tank-fill.warn   { background: rgba(234,179,8,0.35); }
+    .tank-fill.danger { background: rgba(239,68,68,0.35); }
+
+    .tank-pct-label {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      font-size: 2rem; font-weight: 800; text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+      pointer-events: none;
+    }
+    .tank-pct-label.ok     { color: var(--green); }
+    .tank-pct-label.warn   { color: var(--yellow); }
+    .tank-pct-label.danger { color: var(--red); }
+
+    /* Tick marks */
+    .tank-ticks {
+      position: absolute; right: 6px; top: 0; bottom: 0;
+      display: flex; flex-direction: column; justify-content: space-between;
+      padding: 4px 0; pointer-events: none;
+    }
+    .tick { font-size: 0.6rem; color: rgba(255,255,255,0.3); }
+
+    /* Stats grid under each tank */
+    .tank-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    .stat { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 0.6rem 0.8rem; }
+    .stat .s-label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .stat .s-value { font-size: 1.1rem; font-weight: 700; }
+    .stat .s-value.cyan   { color: var(--cyan); }
+    .stat .s-value.green  { color: var(--green); }
+    .stat .s-value.yellow { color: var(--yellow); }
+    .stat .s-value.purple { color: var(--purple); }
+
+    /* Source badge + toggle (Tank 2) */
+    .source-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.8rem; }
+    .source-badge {
+      font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .source-badge.rain  { background: rgba(59,130,246,0.2);  color: var(--blue); }
+    .source-badge.mains { background: rgba(6,182,212,0.2);   color: var(--cyan); }
+    .source-btn {
+      font-size: 0.72rem; background: var(--border); border: none; color: var(--muted);
+      border-radius: 6px; padding: 3px 10px; cursor: pointer;
+    }
+    .source-btn:hover { background: var(--blue); color: #fff; }
+
+    /* Pump badge */
+    .pump-badge { font-size: 0.7rem; margin-top: 0.5rem; }
+    .pump-badge span { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
+    .pump-badge .on  { background: var(--green); }
+    .pump-badge .off { background: var(--border); }
+
+    /* Charts */
+    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; }
+    .panel h3 { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem; }
+
+    @media (max-width: 800px) {
+      .tanks-row, .charts-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>&#128167; Water Monitor</h1>
+  <span id="refresh-badge">Auto-refresh every 30s</span>
+</header>
+
+<main>
+  <div class="tanks-row" id="tanks-row">
+    <!-- Rendered by JS -->
+  </div>
+  <div class="charts-row">
+    <div class="panel">
+      <h3>Tank 1 — Volume History (7 days)</h3>
+      <canvas id="chart-tank1" height="120"></canvas>
+    </div>
+    <div class="panel">
+      <h3>Tank 2 — Volume History (7 days)</h3>
+      <canvas id="chart-tank2" height="120"></canvas>
+    </div>
+  </div>
+</main>
+
+<script>
+  const charts = {};
+
+  function levelClass(pct, low) {
+    if (pct <= low) return 'danger';
+    if (pct <= low * 2) return 'warn';
+    return 'ok';
+  }
+
+  function fmt(v, dec = 0) {
+    return v == null ? '—' : Number(v).toFixed(dec);
+  }
+
+  function renderTank(tank) {
+    const r = tank.reading || {};
+    const pct = r.level_pct ?? 0;
+    const low = tank.low_threshold_pct ?? 20;
+    const cls = levelClass(pct, low);
+    const vol = r.volume_liters ?? 0;
+    const cap = tank.capacity_liters;
+
+    const sourceBadge = tank.sources.length > 1
+      ? `<div class="source-row">
+           <span class="source-badge ${tank.active_source}">${tank.active_source}</span>
+           ${tank.sources.filter(s => s !== tank.active_source).map(s =>
+             `<button class="source-btn" onclick="switchSource('${tank.id}','${s}')">Switch to ${s}</button>`
+           ).join('')}
+         </div>`
+      : '';
+
+    return `
+    <div class="tank-card" id="card-${tank.id}">
+      <h2>${tank.name}</h2>
+      <div class="capacity">${(cap/1000).toFixed(1)} m³ capacity &mdash; Dayliff DDA 1000P</div>
+      ${sourceBadge}
+      <div class="tank-body">
+        <div class="tank-fill ${cls}" style="height:${Math.min(100,pct)}%"></div>
+        <span class="tank-pct-label ${cls}">${fmt(pct,1)}%</span>
+        <div class="tank-ticks">
+          <span class="tick">100%</span>
+          <span class="tick">75%</span>
+          <span class="tick">50%</span>
+          <span class="tick">25%</span>
+          <span class="tick">0%</span>
+        </div>
+      </div>
+      <div class="tank-stats">
+        <div class="stat">
+          <div class="s-label">Volume</div>
+          <div class="s-value cyan">${fmt(vol,0)} L</div>
+        </div>
+        <div class="stat">
+          <div class="s-label">Est. Days Left</div>
+          <div class="s-value ${cls === 'danger' ? 'yellow' : 'green'}">${tank.days_left != null ? fmt(tank.days_left,1) + 'd' : '—'}</div>
+        </div>
+        <div class="stat">
+          <div class="s-label">Drain Rate</div>
+          <div class="s-value yellow">${tank.rate_lph != null ? fmt(tank.rate_lph,1) + ' L/h' : '—'}</div>
+        </div>
+        <div class="stat">
+          <div class="s-label">Water Depth</div>
+          <div class="s-value purple">${r.level_cm != null ? fmt(r.level_cm,0) + ' cm' : '—'}</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  async function loadTanks() {
+    const tanks = await fetch('/api/tanks').then(r => r.json());
+    document.getElementById('tanks-row').innerHTML = tanks.map(renderTank).join('');
+  }
+
+  async function loadHistory(tankId, canvasId, color) {
+    const data = await fetch(`/api/history/${tankId}?days=7`).then(r => r.json());
+    if (!data.length) return;
+
+    const labels = data.map(d => {
+      const t = new Date(d.time);
+      return `${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:00`;
+    });
+    const values = data.map(d => d.value);
+
+    if (!charts[tankId]) {
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      charts[tankId] = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{ label: 'Volume (L)', data: values,
+            borderColor: color, backgroundColor: color.replace(')', ',0.1)').replace('rgb', 'rgba'),
+            tension: 0.3, pointRadius: 2, fill: true }]
+        },
+        options: {
+          responsive: true, animation: false,
+          scales: {
+            x: { ticks: { color: '#8892a4', maxTicksLimit: 8 }, grid: { color: '#2a2d3e' } },
+            y: { ticks: { color: '#8892a4' }, grid: { color: '#2a2d3e' }, beginAtZero: true }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    } else {
+      charts[tankId].data.labels = labels;
+      charts[tankId].data.datasets[0].data = values;
+      charts[tankId].update('none');
+    }
+  }
+
+  async function switchSource(tankId, source) {
+    await fetch(`/api/source/${tankId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source })
+    });
+    refresh();
+  }
+
+  async function refresh() {
+    await Promise.all([
+      loadTanks(),
+      loadHistory('tank1', 'chart-tank1', 'rgb(6,182,212)'),
+      loadHistory('tank2', 'chart-tank2', 'rgb(59,130,246)'),
+    ]);
+  }
+
+  refresh();
+  setInterval(refresh, 30000);
+</script>
+</body>
+</html>

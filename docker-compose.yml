@@ -52,6 +52,17 @@ services:
       - influxdb
       - mosquitto
 
+  water-dashboard:
+    build: ./projects/water-monitor
+    container_name: water-dashboard
+    restart: unless-stopped
+    command: ["gunicorn", "-w", "2", "-b", "0.0.0.0:5002", "dashboard.app:app"]
+    ports:
+      - "5002:5002"
+    env_file: .env
+    depends_on:
+      - influxdb
+
   solar-collector:
     build: ./projects/solar-battery
     container_name: solar-collector

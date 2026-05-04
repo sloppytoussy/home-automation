@@ -1,0 +1,171 @@
+{
+  "title": "Water Monitor",
+  "uid": "water-monitor",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-7d", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "gauge", "title": "Tank 1 — WASAC Mains (Level %)",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 6 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "minVizValue": 0, "maxVizValue": 100 },
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "min": 0, "max": 100,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "yellow", "value": 20 },
+            { "color": "green", "value": 40 }
+          ]}
+        }
+      },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"water_tank\" and r.tank_id == \"tank1\" and r._field == \"level_pct\")\n  |> last()",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 2, "type": "stat", "title": "Tank 1 — Volume",
+      "gridPos": { "x": 6, "y": 0, "w": 3, "h": 3 },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "litre", "color": { "mode": "fixed", "fixedColor": "cyan" } } },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"water_tank\" and r.tank_id == \"tank1\" and r._field == \"volume_liters\")\n  |> last()",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 3, "type": "stat", "title": "Tank 1 — Water Depth",
+      "gridPos": { "x": 6, "y": 3, "w": 3, "h": 3 },
+      "options": { "colorMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "lengthcm", "color": { "mode": "fixed", "fixedColor": "blue" } } },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"water_tank\" and r.tank_id == \"tank1\" and r._field == \"level_cm\")\n  |> last()",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 4, "type": "stat", "title": "Tank 1 — Est. Days Remaining",
+      "gridPos": { "x": 9, "y": 0, "w": 3, "h": 6 },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": {
+        "defaults": { "unit": "d",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": 3 }, { "color": "green", "value": 7 }
+          ]}
+        }
+      },
+      "targets": [{
+        "query": "import \"math\"\nfrom(bucket: v.defaultBucket)\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"water_tank\" and r.tank_id == \"tank1\" and r._field == \"volume_liters\")\n  |> sort(columns:[\"_time\"])\n  |> difference()\n  |> mean()\n  |> map(fn: (r) => ({r with _value: math.abs(x: r._value)}))",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 5, "type": "gauge", "title": "Tank 2 — Rain/WASAC (Level %)",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 6 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "minVizValue": 0, "maxVizValue": 100 },
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "min": 0, "max": 100,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "yellow", "value": 15 },
+            { "color": "green", "value": 30 }
+          ]}
+        }
+      },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"water_tank\" and r.tank_id == \"tank2\" and r._field == \"level_pct\")\n  |> last()",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 6, "type": "stat", "title": "Tank 2 — Volume",
+      "gridPos": { "x": 18, "y": 0, "w": 3, "h": 3 },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "litre", "color": { "mode": "fixed", "fixedColor": "blue" } } },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"water_tank\" and r.tank_id == \"tank2\" and r._field == \"volume_liters\")\n  |> last()",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 7, "type": "stat", "title": "Tank 2 — Active Source",
+      "gridPos": { "x": 18, "y": 3, "w": 3, "h": 3 },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "purple" } } },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"water_tank\" and r.tank_id == \"tank2\" and r._field == \"level_pct\")\n  |> last()\n  |> keep(columns:[\"source\"])",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 8, "type": "stat", "title": "Tank 2 — Est. Days Remaining",
+      "gridPos": { "x": 21, "y": 0, "w": 3, "h": 6 },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": {
+        "defaults": { "unit": "d",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": 3 }, { "color": "green", "value": 7 }
+          ]}
+        }
+      },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"water_tank\" and r.tank_id == \"tank2\" and r._field == \"volume_liters\")\n  |> sort(columns:[\"_time\"])\n  |> difference()\n  |> mean()",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 9, "type": "timeseries", "title": "Tank 1 — Volume Over Time (L)",
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "litre", "custom": { "lineWidth": 2, "fillOpacity": 12 },
+          "color": { "mode": "fixed", "fixedColor": "cyan" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": 1000 }, { "color": "green", "value": 2000 }
+          ]}
+        }
+      },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"water_tank\" and r.tank_id == \"tank1\" and r._field == \"volume_liters\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 10, "type": "timeseries", "title": "Tank 2 — Volume Over Time (L)",
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "litre", "custom": { "lineWidth": 2, "fillOpacity": 12 },
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": 2200 }, { "color": "green", "value": 5000 }
+          ]}
+        }
+      },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"water_tank\" and r.tank_id == \"tank2\" and r._field == \"volume_liters\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 11, "type": "timeseries", "title": "Tank 2 — Source History (Rain vs Mains)",
+      "gridPos": { "x": 0, "y": 14, "w": 24, "h": 6 },
+      "fieldConfig": {
+        "defaults": { "custom": { "lineWidth": 0, "fillOpacity": 60, "drawStyle": "bars" } },
+        "overrides": [
+          { "matcher": { "id": "byFrameRefID", "options": "rain"  }, "properties": [{ "id": "color", "value": { "fixedColor": "blue",  "mode": "fixed" } }] },
+          { "matcher": { "id": "byFrameRefID", "options": "mains" }, "properties": [{ "id": "color", "value": { "fixedColor": "cyan", "mode": "fixed" } }] }
+        ]
+      },
+      "targets": [
+        {
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"water_tank\" and r.tank_id == \"tank2\" and r.source == \"rain\" and r._field == \"volume_liters\")\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)",
+          "refId": "rain"
+        },
+        {
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"water_tank\" and r.tank_id == \"tank2\" and r.source == \"mains\" and r._field == \"volume_liters\")\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)",
+          "refId": "mains"
+        }
+      ]
+    }
+  ]
+}
