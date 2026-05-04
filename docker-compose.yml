@@ -1,0 +1,74 @@
+services:
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+      - ./infrastructure/influxdb:/etc/influxdb2
+    env_file: .env
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infrastructure/grafana/dashboards:/etc/grafana/provisioning/dashboards
+    depends_on:
+      - influxdb
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./infrastructure/docker/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_data:/mosquitto/data
+
+  power-collector:
+    build: ./projects/power-dashboard
+    container_name: power-collector
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - influxdb
+      - mosquitto
+
+  water-collector:
+    build: ./projects/water-monitor
+    container_name: water-collector
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - influxdb
+      - mosquitto
+
+  solar-collector:
+    build: ./projects/solar-battery
+    container_name: solar-collector
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - influxdb
+      - mosquitto
+
+  dns-collector:
+    build: ./projects/dns-monitor
+    container_name: dns-collector
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - influxdb
+
+volumes:
+  influxdb_data:
+  grafana_data:
+  mosquitto_data:

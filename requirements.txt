@@ -1,0 +1,6 @@
+influxdb-client==1.44.0
+paho-mqtt==1.6.1
+python-dotenv==1.0.1
+requests==2.32.3
+pymodbus==3.6.9
+schedule==1.2.2
