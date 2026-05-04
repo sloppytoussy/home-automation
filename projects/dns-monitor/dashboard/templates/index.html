@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DNS Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2a2d3e;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --green: #22c55e;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --yellow: #eab308;
+      --purple: #a855f7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2rem; border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    header h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: 0.05em; color: var(--blue); }
+    #refresh-badge { font-size: 0.75rem; color: var(--muted); }
+    #status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-right: 6px; }
+    #status-dot.error { background: var(--red); }
+
+    main { padding: 1.5rem 2rem; max-width: 1400px; margin: 0 auto; }
+
+    /* Stat cards */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1.2rem 1.4rem;
+    }
+    .stat-card .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4rem; }
+    .stat-card .value { font-size: 2rem; font-weight: 700; line-height: 1; }
+    .stat-card .sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.3rem; }
+    .stat-card.green .value { color: var(--green); }
+    .stat-card.red .value { color: var(--red); }
+    .stat-card.blue .value { color: var(--blue); }
+    .stat-card.yellow .value { color: var(--yellow); }
+    .stat-card.purple .value { color: var(--purple); }
+
+    /* Charts + tables row */
+    .row { display: grid; gap: 1rem; margin-bottom: 1rem; }
+    .row.col-2 { grid-template-columns: 1fr 1fr; }
+    .row.col-3 { grid-template-columns: 2fr 1fr 1fr; }
+
+    .panel {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem;
+    }
+    .panel h2 { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem; }
+
+    canvas { width: 100% !important; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { text-align: left; font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 0 0 0.5rem; border-bottom: 1px solid var(--border); }
+    td { padding: 0.45rem 0; border-bottom: 1px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+    tr:last-child td { border-bottom: none; }
+    .bar-cell { width: 80px; }
+    .bar-bg { background: var(--border); border-radius: 3px; height: 6px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 3px; background: var(--blue); }
+    .bar-fill.red { background: var(--red); }
+
+    /* Recent queries */
+    .query-row td:first-child { color: var(--muted); font-size: 0.75rem; width: 90px; }
+    .tag { display: inline-block; font-size: 0.65rem; padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+    .tag.blocked { background: rgba(239,68,68,0.15); color: var(--red); }
+    .tag.ok { background: rgba(34,197,94,0.15); color: var(--green); }
+
+    @media (max-width: 900px) { .row.col-3 { grid-template-columns: 1fr; } .row.col-2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<header>
+  <h1>&#9670; DNS Monitor</h1>
+  <span id="refresh-badge"><span id="status-dot"></span>Live &mdash; refreshing in <span id="countdown">15</span>s</span>
+</header>
+<main>
+  <!-- Stat cards -->
+  <div class="stat-grid">
+    <div class="stat-card blue">
+      <div class="label">Total Queries (24h)</div>
+      <div class="value" id="stat-total">—</div>
+    </div>
+    <div class="stat-card red">
+      <div class="label">Blocked</div>
+      <div class="value" id="stat-blocked">—</div>
+      <div class="sub" id="stat-blocked-pct">—</div>
+    </div>
+    <div class="stat-card green">
+      <div class="label">% Blocked</div>
+      <div class="value" id="stat-pct">—</div>
+    </div>
+    <div class="stat-card yellow">
+      <div class="label">Unique Domains</div>
+      <div class="value" id="stat-domains">—</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="label">Active Clients</div>
+      <div class="value" id="stat-clients">—</div>
+    </div>
+  </div>
+
+  <!-- History chart + query types -->
+  <div class="row col-2" style="margin-bottom:1rem">
+    <div class="panel">
+      <h2>Queries over 24 hours</h2>
+      <canvas id="history-chart" height="120"></canvas>
+    </div>
+    <div class="panel">
+      <h2>Query Types</h2>
+      <canvas id="types-chart" height="120"></canvas>
+    </div>
+  </div>
+
+  <!-- Top tables -->
+  <div class="row col-3">
+    <div class="panel">
+      <h2>Top Permitted Domains</h2>
+      <table id="top-domains-table">
+        <thead><tr><th>Domain</th><th>Queries</th><th class="bar-cell"></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <h2>Top Blocked Domains</h2>
+      <table id="top-blocked-table">
+        <thead><tr><th>Domain</th><th>Blocked</th><th class="bar-cell"></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <h2>Top Clients</h2>
+      <table id="top-clients-table">
+        <thead><tr><th>Client</th><th>Queries</th><th class="bar-cell"></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+  let historyChart, typesChart;
+
+  function fmt(n) {
+    if (n == null) return '—';
+    return Number(n).toLocaleString();
+  }
+
+  function renderBar(count, max, red = false) {
+    const pct = max > 0 ? Math.round((count / max) * 100) : 0;
+    return `<div class="bar-bg"><div class="bar-fill${red ? ' red' : ''}" style="width:${pct}%"></div></div>`;
+  }
+
+  function fillTable(tableId, entries, red = false) {
+    const tbody = document.querySelector(`#${tableId} tbody`);
+    if (!entries || entries.length === 0) { tbody.innerHTML = '<tr><td colspan="3" style="color:var(--muted)">No data</td></tr>'; return; }
+    const max = entries[0][1];
+    tbody.innerHTML = entries.map(([name, count]) =>
+      `<tr><td title="${name}">${name}</td><td>${fmt(count)}</td><td class="bar-cell">${renderBar(count, max, red)}</td></tr>`
+    ).join('');
+  }
+
+  async function fetchSummary() {
+    const data = await fetch('/api/summary').then(r => r.json());
+    const q = data.queries || {};
+    const c = data.clients || {};
+    document.getElementById('stat-total').textContent = fmt(q.total);
+    document.getElementById('stat-blocked').textContent = fmt(q.blocked);
+    document.getElementById('stat-pct').textContent = (parseFloat(q.percent_blocked) || 0).toFixed(1) + '%';
+    document.getElementById('stat-domains').textContent = fmt(q.unique_domains);
+    document.getElementById('stat-clients').textContent = fmt(c.active);
+  }
+
+  async function fetchTopDomains() {
+    const data = await fetch('/api/top_domains').then(r => r.json());
+    const entries = Object.entries(data.domains || {}).sort((a, b) => b[1] - a[1]);
+    fillTable('top-domains-table', entries);
+  }
+
+  async function fetchTopBlocked() {
+    const data = await fetch('/api/top_blocked').then(r => r.json());
+    const entries = Object.entries(data.blocked || {}).sort((a, b) => b[1] - a[1]);
+    fillTable('top-blocked-table', entries, true);
+  }
+
+  async function fetchTopClients() {
+    const data = await fetch('/api/top_clients').then(r => r.json());
+    const entries = Object.entries(data.clients || {}).sort((a, b) => b[1] - a[1]);
+    fillTable('top-clients-table', entries);
+  }
+
+  async function fetchHistory() {
+    const data = await fetch('/api/history').then(r => r.json());
+    const history = data.history || [];
+    const labels = history.map(h => {
+      const d = new Date(h.timestamp * 1000);
+      return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+    });
+    const total = history.map(h => h.total || 0);
+    const blocked = history.map(h => h.blocked || 0);
+
+    if (!historyChart) {
+      const ctx = document.getElementById('history-chart').getContext('2d');
+      historyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Total', data: total, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', tension: 0.3, pointRadius: 0, fill: true },
+            { label: 'Blocked', data: blocked, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', tension: 0.3, pointRadius: 0, fill: true },
+          ]
+        },
+        options: {
+          responsive: true, animation: false,
+          scales: {
+            x: { ticks: { color: '#8892a4', maxTicksLimit: 8 }, grid: { color: '#2a2d3e' } },
+            y: { ticks: { color: '#8892a4' }, grid: { color: '#2a2d3e' }, beginAtZero: true }
+          },
+          plugins: { legend: { labels: { color: '#e2e8f0', boxWidth: 12 } } }
+        }
+      });
+    } else {
+      historyChart.data.labels = labels;
+      historyChart.data.datasets[0].data = total;
+      historyChart.data.datasets[1].data = blocked;
+      historyChart.update('none');
+    }
+  }
+
+  async function fetchQueryTypes() {
+    const data = await fetch('/api/query_types').then(r => r.json());
+    const types = data.types || {};
+    const labels = Object.keys(types);
+    const values = Object.values(types);
+    const colors = ['#3b82f6','#22c55e','#a855f7','#eab308','#ef4444','#06b6d4','#f97316','#ec4899'];
+
+    if (!typesChart) {
+      const ctx = document.getElementById('types-chart').getContext('2d');
+      typesChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0 }] },
+        options: {
+          responsive: true, animation: false,
+          plugins: { legend: { position: 'right', labels: { color: '#e2e8f0', boxWidth: 12, font: { size: 11 } } } }
+        }
+      });
+    } else {
+      typesChart.data.labels = labels;
+      typesChart.data.datasets[0].data = values;
+      typesChart.update('none');
+    }
+  }
+
+  async function refresh() {
+    const dot = document.getElementById('status-dot');
+    try {
+      await Promise.all([
+        fetchSummary(), fetchTopDomains(), fetchTopBlocked(),
+        fetchTopClients(), fetchHistory(), fetchQueryTypes()
+      ]);
+      dot.classList.remove('error');
+    } catch (e) {
+      dot.classList.add('error');
+      console.error(e);
+    }
+  }
+
+  // Countdown + auto-refresh
+  const INTERVAL = 15;
+  let remaining = INTERVAL;
+  refresh();
+  setInterval(() => {
+    remaining--;
+    document.getElementById('countdown').textContent = remaining;
+    if (remaining <= 0) { remaining = INTERVAL; refresh(); }
+  }, 1000);
+</script>
+</body>
+</html>

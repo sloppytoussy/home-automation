@@ -1,0 +1,113 @@
+{
+  "__inputs": [],
+  "__requires": [{ "type": "datasource", "id": "influxdb", "name": "InfluxDB", "version": "1.0.0" }],
+  "title": "DNS Monitor",
+  "uid": "dns-monitor",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Total Queries (24h)",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "blue" }, "unit": "short" } },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"dns_summary\" and r._field == \"total_queries\")\n  |> last()",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 2, "type": "stat", "title": "Blocked Queries (24h)",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "red" }, "unit": "short" } },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"dns_summary\" and r._field == \"blocked_queries\")\n  |> last()",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 3, "type": "gauge", "title": "% Blocked",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "minVizValue": 0, "maxVizValue": 100 },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100,
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "yellow", "value": 20 }, { "color": "red", "value": 50 }
+        ]}
+      }},
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"dns_summary\" and r._field == \"percent_blocked\")\n  |> last()",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 4, "type": "stat", "title": "Unique Domains",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "yellow" }, "unit": "short" } },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"dns_summary\" and r._field == \"unique_domains\")\n  |> last()",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 5, "type": "stat", "title": "Active Clients",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "purple" }, "unit": "short" } },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"dns_summary\" and r._field == \"unique_clients\")\n  |> last()",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Queries Over Time",
+      "gridPos": { "x": 0, "y": 4, "w": 16, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+        "overrides": [{ "matcher": { "id": "byName", "options": "blocked_queries" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] }]
+      },
+      "targets": [
+        {
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"dns_summary\" and (r._field == \"total_queries\" or r._field == \"blocked_queries\"))\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7, "type": "piechart", "title": "Query Types",
+      "gridPos": { "x": 16, "y": 4, "w": 8, "h": 8 },
+      "options": { "pieType": "donut", "legendDisplayMode": "table", "placement": "bottom" },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"dns_query_types\" and r._field == \"count\")\n  |> last()\n  |> group(columns: [\"type\"])",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 8, "type": "table", "title": "Top Permitted Domains",
+      "gridPos": { "x": 0, "y": 12, "w": 8, "h": 8 },
+      "options": { "sortBy": [{ "displayName": "count", "desc": true }] },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"dns_top_domains\" and r._field == \"count\")\n  |> last()\n  |> group(columns: [\"domain\"])\n  |> sort(columns: [\"_value\"], desc: true)",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 9, "type": "table", "title": "Top Blocked Domains",
+      "gridPos": { "x": 8, "y": 12, "w": 8, "h": 8 },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"dns_top_blocked\" and r._field == \"count\")\n  |> last()\n  |> group(columns: [\"domain\"])\n  |> sort(columns: [\"_value\"], desc: true)",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 10, "type": "table", "title": "Top Clients",
+      "gridPos": { "x": 16, "y": 12, "w": 8, "h": 8 },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"dns_top_clients\" and r._field == \"count\")\n  |> last()\n  |> group(columns: [\"client\"])\n  |> sort(columns: [\"_value\"], desc: true)",
+        "refId": "A"
+      }]
+    }
+  ]
+}

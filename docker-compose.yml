@@ -68,6 +68,17 @@ services:
     depends_on:
       - influxdb
 
+  dns-dashboard:
+    build: ./projects/dns-monitor
+    container_name: dns-dashboard
+    restart: unless-stopped
+    command: ["gunicorn", "-w", "2", "-b", "0.0.0.0:5000", "dashboard.app:app"]
+    ports:
+      - "5000:5000"
+    env_file: .env
+    depends_on:
+      - influxdb
+
 volumes:
   influxdb_data:
   grafana_data:
