@@ -1,0 +1,149 @@
+{
+  "title": "Solar & Battery",
+  "uid": "solar-battery",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "gauge", "title": "Battery SoC",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 6 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "minVizValue": 0, "maxVizValue": 100 },
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "min": 0, "max": 100,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": 20 }, { "color": "green", "value": 50 }
+          ]}
+        }
+      },
+      "targets": [{ "refId": "A",
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"solar\" and r._field == \"battery_soc_pct\")\n  |> last()"
+      }]
+    },
+    {
+      "id": 2, "type": "stat", "title": "PV Power",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 3 },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "watt", "color": { "mode": "fixed", "fixedColor": "yellow" } } },
+      "targets": [{ "refId": "A",
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"solar\" and r._field == \"pv_power_w\")\n  |> last()"
+      }]
+    },
+    {
+      "id": 3, "type": "stat", "title": "Load",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 3 },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "watt", "color": { "mode": "fixed", "fixedColor": "orange" } } },
+      "targets": [{ "refId": "A",
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"solar\" and r._field == \"load_power_w\")\n  |> last()"
+      }]
+    },
+    {
+      "id": 4, "type": "stat", "title": "Battery Power",
+      "gridPos": { "x": 4, "y": 3, "w": 4, "h": 3 },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": {
+        "defaults": { "unit": "watt",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": -10 }, { "color": "green", "value": 10 }
+          ]}
+        }
+      },
+      "targets": [{ "refId": "A",
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"solar\" and r._field == \"battery_power_w\")\n  |> last()"
+      }]
+    },
+    {
+      "id": 5, "type": "stat", "title": "Grid Power",
+      "gridPos": { "x": 8, "y": 3, "w": 4, "h": 3 },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": {
+        "defaults": { "unit": "watt",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 500 }
+          ]}
+        }
+      },
+      "targets": [{ "refId": "A",
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"solar\" and r._field == \"grid_power_w\")\n  |> last()"
+      }]
+    },
+    {
+      "id": 6, "type": "stat", "title": "Today's Yield",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 3 },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "kwh", "color": { "mode": "fixed", "fixedColor": "yellow" } } },
+      "targets": [{ "refId": "A",
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"solar\" and r._field == \"daily_yield_kwh\")\n  |> last()"
+      }]
+    },
+    {
+      "id": 7, "type": "stat", "title": "Inverter Temp",
+      "gridPos": { "x": 12, "y": 3, "w": 4, "h": 3 },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": {
+        "defaults": { "unit": "celsius",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null }, { "color": "yellow", "value": 55 }, { "color": "red", "value": 70 }
+          ]}
+        }
+      },
+      "targets": [{ "refId": "A",
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"solar\" and r._field == \"inverter_temp_c\")\n  |> last()"
+      }]
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "PV Power & Load (W)",
+      "gridPos": { "x": 0, "y": 6, "w": 16, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "watt", "custom": { "lineWidth": 2, "fillOpacity": 8 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "pv_power_w" },   "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "load_power_w" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] }
+        ]
+      },
+      "targets": [{ "refId": "A",
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"solar\" and (r._field == \"pv_power_w\" or r._field == \"load_power_w\"))\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
+      }]
+    },
+    {
+      "id": 9, "type": "timeseries", "title": "Battery SoC (%)",
+      "gridPos": { "x": 16, "y": 6, "w": 8, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "min": 0, "max": 100, "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": 20 }, { "color": "green", "value": 50 }
+          ]}
+        }
+      },
+      "targets": [{ "refId": "A",
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"solar\" and r._field == \"battery_soc_pct\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
+      }]
+    },
+    {
+      "id": 10, "type": "timeseries", "title": "Battery Power (W) — + charging / − discharging",
+      "gridPos": { "x": 0, "y": 14, "w": 12, "h": 7 },
+      "fieldConfig": {
+        "defaults": { "unit": "watt", "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "color": { "mode": "fixed", "fixedColor": "purple" }
+        }
+      },
+      "targets": [{ "refId": "A",
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"solar\" and r._field == \"battery_power_w\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)"
+      }]
+    },
+    {
+      "id": 11, "type": "barchart", "title": "Daily Yield (kWh) — 14 days",
+      "gridPos": { "x": 12, "y": 14, "w": 12, "h": 7 },
+      "fieldConfig": {
+        "defaults": { "unit": "kwh", "color": { "mode": "fixed", "fixedColor": "yellow" } }
+      },
+      "options": { "groupWidth": 0.7, "fillOpacity": 80 },
+      "targets": [{ "refId": "A",
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: -14d)\n  |> filter(fn: (r) => r._measurement == \"solar\" and r._field == \"daily_yield_kwh\")\n  |> aggregateWindow(every: 1d, fn: max, createEmpty: false)"
+      }]
+    }
+  ]
+}

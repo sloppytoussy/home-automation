@@ -72,6 +72,17 @@ services:
       - influxdb
       - mosquitto
 
+  solar-dashboard:
+    build: ./projects/solar-battery
+    container_name: solar-dashboard
+    restart: unless-stopped
+    command: ["gunicorn", "-w", "2", "-b", "0.0.0.0:5003", "dashboard.app:app"]
+    ports:
+      - "5003:5003"
+    env_file: .env
+    depends_on:
+      - influxdb
+
   dns-collector:
     build: ./projects/dns-monitor
     container_name: dns-collector

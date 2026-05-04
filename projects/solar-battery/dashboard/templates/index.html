@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Solar & Battery</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:#0f1117; --surface:#1a1d27; --border:#2a2d3e;
+      --text:#e2e8f0; --muted:#8892a4;
+      --yellow:#eab308; --green:#22c55e; --blue:#3b82f6;
+      --red:#ef4444; --orange:#f97316; --purple:#a855f7; --cyan:#06b6d4;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;}
+
+    header{
+      background:var(--surface);border-bottom:1px solid var(--border);
+      padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;
+    }
+    header h1{font-size:1.2rem;font-weight:700;color:var(--yellow);}
+    #last-seen{font-size:0.75rem;color:var(--muted);}
+
+    main{max-width:1300px;margin:0 auto;padding:1.5rem 2rem;}
+
+    /* ── STAT CARDS ── */
+    .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem;}
+    .sc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.3rem;}
+    .sc .lbl{font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.35rem;}
+    .sc .val{font-size:1.9rem;font-weight:800;line-height:1;}
+    .sc .sub{font-size:.72rem;color:var(--muted);margin-top:.25rem;}
+    .sc.yellow .val{color:var(--yellow);}
+    .sc.green  .val{color:var(--green);}
+    .sc.blue   .val{color:var(--blue);}
+    .sc.orange .val{color:var(--orange);}
+    .sc.purple .val{color:var(--purple);}
+    .sc.cyan   .val{color:var(--cyan);}
+
+    /* ── ENERGY FLOW DIAGRAM ── */
+    .flow-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;}
+    .flow-section h2{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1.2rem;}
+
+    .flow-grid{
+      display:grid;
+      grid-template-columns:1fr 80px 1fr 80px 1fr;
+      grid-template-rows:1fr 60px 1fr;
+      gap:0;align-items:center;justify-items:center;
+      max-width:700px;margin:0 auto;
+    }
+
+    /* Nodes */
+    .node{
+      display:flex;flex-direction:column;align-items:center;gap:.4rem;
+      padding:.8rem 1rem;border-radius:12px;border:1px solid var(--border);
+      background:rgba(255,255,255,.03);min-width:120px;text-align:center;
+    }
+    .node .icon{font-size:1.8rem;line-height:1;}
+    .node .name{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+    .node .power{font-size:1.1rem;font-weight:700;}
+    .node.solar  .power{color:var(--yellow);}
+    .node.battery .power{color:var(--green);}
+    .node.load   .power{color:var(--orange);}
+    .node.grid   .power{color:var(--blue);}
+    .node.inv    .power{color:var(--cyan);}
+
+    /* SoC bar inside battery node */
+    .soc-bar{width:80%;height:6px;background:var(--border);border-radius:3px;margin-top:2px;overflow:hidden;}
+    .soc-fill{height:100%;border-radius:3px;transition:width .8s ease,background .8s;}
+
+    /* Flow pipes */
+    .pipe{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:100%;}
+    .pipe-h{width:100%;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+    .pipe-v{width:4px;height:100%;background:var(--border);border-radius:2px;overflow:hidden;justify-self:center;}
+    .pipe-label{position:absolute;font-size:.65rem;color:var(--muted);white-space:nowrap;top:-16px;}
+
+    /* Animated flow dots */
+    .flow-dot{
+      position:absolute;width:8px;height:8px;border-radius:50%;
+      animation:none;opacity:0;
+    }
+    @keyframes flow-right{0%{left:0;opacity:1;}100%{left:100%;opacity:0;}}
+    @keyframes flow-left {0%{right:0;opacity:1;}100%{right:100%;opacity:0;}}
+    @keyframes flow-down {0%{top:0;opacity:1;}100%{top:100%;opacity:0;}}
+    @keyframes flow-up   {0%{bottom:0;opacity:1;}100%{bottom:100%;opacity:0;}}
+    .flow-right .flow-dot{animation:flow-right linear infinite;}
+    .flow-left  .flow-dot{animation:flow-left  linear infinite;}
+    .flow-down  .flow-dot{animation:flow-down  linear infinite;}
+    .flow-up    .flow-dot{animation:flow-up    linear infinite;}
+
+    /* Grid placements */
+    .n-solar   {grid-column:1;grid-row:1;}
+    .p-sol-inv {grid-column:2;grid-row:1;}
+    .n-inv     {grid-column:3;grid-row:1;}
+    .p-inv-load{grid-column:4;grid-row:1;}
+    .n-load    {grid-column:5;grid-row:1;}
+    .p-inv-bat {grid-column:3;grid-row:2;}
+    .n-bat     {grid-column:3;grid-row:3;}
+    .p-grid    {grid-column:4;grid-row:2;grid-row-end:4;}
+    .n-grid    {grid-column:5;grid-row:3;}
+
+    /* ── CHARTS ── */
+    .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;}
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.2rem;}
+    .panel h3{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem;}
+    canvas{width:100%!important;}
+
+    @media(max-width:900px){
+      .charts-row{grid-template-columns:1fr;}
+      .flow-grid{grid-template-columns:1fr 50px 1fr 50px 1fr;}
+      .node{min-width:80px;padding:.5rem .6rem;}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>&#9728; Solar &amp; Battery — {{ system.name or 'Home' }}</h1>
+  <span id="last-seen">Loading…</span>
+</header>
+
+<main>
+  <!-- Stat cards -->
+  <div class="stat-grid">
+    <div class="sc yellow"><div class="lbl">PV Power</div><div class="val" id="s-pv">—</div><div class="sub">Watts now</div></div>
+    <div class="sc green" ><div class="lbl">Battery SoC</div><div class="val" id="s-soc">—</div><div class="sub" id="s-soc-sub">—</div></div>
+    <div class="sc orange"><div class="lbl">Load</div><div class="val" id="s-load">—</div><div class="sub">Watts now</div></div>
+    <div class="sc blue"  ><div class="lbl">Grid</div><div class="val" id="s-grid">—</div><div class="sub" id="s-grid-sub">—</div></div>
+    <div class="sc purple"><div class="lbl">Battery</div><div class="val" id="s-bat">—</div><div class="sub" id="s-bat-sub">—</div></div>
+    <div class="sc cyan"  ><div class="lbl">Today's Yield</div><div class="val" id="s-yield">—</div><div class="sub">kWh</div></div>
+  </div>
+
+  <!-- Energy flow diagram -->
+  <div class="flow-section">
+    <h2>Live Energy Flow</h2>
+    <div class="flow-grid">
+      <!-- Row 1: Solar — pipe — Inverter — pipe — Load -->
+      <div class="node solar n-solar">
+        <span class="icon">&#9728;</span>
+        <span class="name">Solar PV</span>
+        <span class="power" id="fn-pv">0 W</span>
+        <span class="sub">{{ system.pv_capacity_kwp or '—' }} kWp</span>
+      </div>
+
+      <div class="pipe p-sol-inv pipe-h" id="pipe-sol-inv">
+        <div class="pipe-h"><div class="flow-dot" id="dot-sol-inv"></div></div>
+        <span class="pipe-label" id="lbl-sol-inv"></span>
+      </div>
+
+      <div class="node inv n-inv">
+        <span class="icon">&#9889;</span>
+        <span class="name">Inverter</span>
+        <span class="power" id="fn-inv-temp">—</span>
+      </div>
+
+      <div class="pipe p-inv-load pipe-h" id="pipe-inv-load">
+        <div class="pipe-h"><div class="flow-dot" id="dot-inv-load"></div></div>
+      </div>
+
+      <div class="node load n-load">
+        <span class="icon">&#127968;</span>
+        <span class="name">Load</span>
+        <span class="power" id="fn-load">0 W</span>
+      </div>
+
+      <!-- Row 2: vertical pipe (inverter ↔ battery) + grid pipe -->
+      <div></div><div></div>
+      <div class="pipe p-inv-bat pipe-v" id="pipe-inv-bat" style="height:60px;">
+        <div class="pipe-v"><div class="flow-dot" id="dot-inv-bat"></div></div>
+      </div>
+      <div class="pipe p-grid pipe-v" id="pipe-grid" style="height:60px;grid-row:2/4;grid-column:4;">
+        <div class="pipe-v"><div class="flow-dot" id="dot-grid"></div></div>
+      </div>
+      <div></div>
+
+      <!-- Row 3: Battery + Grid node -->
+      <div></div><div></div>
+      <div class="node battery n-bat">
+        <span class="icon">&#128267;</span>
+        <span class="name">Battery</span>
+        <span class="power" id="fn-bat-soc">0%</span>
+        <div class="soc-bar"><div class="soc-fill" id="soc-fill"></div></div>
+        <span class="sub" id="fn-bat-v">—</span>
+      </div>
+      <div></div>
+      <div class="node grid n-grid">
+        <span class="icon">&#128268;</span>
+        <span class="name">Grid</span>
+        <span class="power" id="fn-grid">0 W</span>
+        <span class="sub" id="fn-grid-sub">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-row">
+    <div class="panel">
+      <h3>PV Power &amp; Load — 24 h</h3>
+      <canvas id="c-power" height="130"></canvas>
+    </div>
+    <div class="panel">
+      <h3>Battery SoC — 24 h</h3>
+      <canvas id="c-soc" height="130"></canvas>
+    </div>
+  </div>
+  <div class="charts-row">
+    <div class="panel">
+      <h3>Daily Yield — 14 days (kWh)</h3>
+      <canvas id="c-yield" height="120"></canvas>
+    </div>
+    <div class="panel">
+      <h3>Battery Power — 24 h (+ charge / − discharge)</h3>
+      <canvas id="c-bat" height="120"></canvas>
+    </div>
+  </div>
+</main>
+
+<script>
+  const MIN_SOC = {{ battery.min_soc_pct or 20 }};
+  const charts = {};
+
+  function fmt(v, dec=0){ return v==null?'—':Number(v).toFixed(dec); }
+  function fmtW(v){ return v==null?'—':Math.abs(v)>=1000?(v/1000).toFixed(2)+' kW':Math.round(v)+' W'; }
+
+  function socColor(pct){
+    if(pct<=MIN_SOC) return '#ef4444';
+    if(pct<=MIN_SOC*1.5) return '#eab308';
+    return '#22c55e';
+  }
+
+  function setFlow(dotId, pipeId, direction, watts, color){
+    const dot = document.getElementById(dotId);
+    const pipe = document.getElementById(pipeId);
+    if(!dot||!pipe) return;
+
+    // Remove all direction classes
+    pipe.classList.remove('flow-right','flow-left','flow-down','flow-up');
+
+    if(!watts || Math.abs(watts) < 5){
+      dot.style.opacity='0';
+      dot.style.animation='none';
+      return;
+    }
+
+    const speed = Math.max(0.4, Math.min(2.5, 3000/Math.abs(watts)));
+    pipe.classList.add(direction);
+    dot.style.background = color;
+    dot.style.opacity = '1';
+    dot.style.animationDuration = speed+'s';
+  }
+
+  async function loadLive(){
+    const d = await fetch('/api/live').then(r=>r.json());
+    if(!d || !d.pv_power_w) return;
+
+    const pv   = d.pv_power_w   || 0;
+    const soc  = d.battery_soc_pct || 0;
+    const bat  = d.battery_power_w || 0;  // + charging
+    const load = d.load_power_w  || 0;
+    const grid = d.grid_power_w  || 0;    // + import
+    const temp = d.inverter_temp_c;
+    const volt = d.battery_voltage_v;
+    const yld  = d.daily_yield_kwh;
+
+    // Stat cards
+    document.getElementById('s-pv').textContent   = fmtW(pv);
+    document.getElementById('s-soc').textContent  = fmt(soc,1)+'%';
+    document.getElementById('s-soc-sub').textContent = bat>10?'Charging':bat<-10?'Discharging':'Idle';
+    document.getElementById('s-load').textContent = fmtW(load);
+    document.getElementById('s-grid').textContent = fmtW(Math.abs(grid));
+    document.getElementById('s-grid-sub').textContent = grid>10?'Importing':grid<-10?'Exporting':'Off-grid';
+    document.getElementById('s-bat').textContent  = fmtW(Math.abs(bat));
+    document.getElementById('s-bat-sub').textContent = bat>10?'Charging':bat<-10?'Discharging':'Idle';
+    document.getElementById('s-yield').textContent = yld!=null?fmt(yld,2):'—';
+
+    // Flow diagram nodes
+    document.getElementById('fn-pv').textContent       = fmtW(pv);
+    document.getElementById('fn-load').textContent     = fmtW(load);
+    document.getElementById('fn-bat-soc').textContent  = fmt(soc,1)+'%';
+    document.getElementById('fn-bat-v').textContent    = volt?fmt(volt,1)+' V':'';
+    document.getElementById('fn-grid').textContent     = fmtW(Math.abs(grid));
+    document.getElementById('fn-grid-sub').textContent = grid>10?'Importing':grid<-10?'Exporting':'';
+    document.getElementById('fn-inv-temp').textContent = temp?fmt(temp,1)+'°C':'';
+
+    // SoC bar
+    const fill = document.getElementById('soc-fill');
+    fill.style.width = Math.min(100,soc)+'%';
+    fill.style.background = socColor(soc);
+
+    // Animated flow pipes
+    setFlow('dot-sol-inv','pipe-sol-inv', 'flow-right', pv,  '#eab308');        // Solar → Inverter
+    setFlow('dot-inv-load','pipe-inv-load','flow-right', load,'#f97316');       // Inverter → Load
+    setFlow('dot-inv-bat','pipe-inv-bat', bat>10?'flow-down':'flow-up', bat,'#22c55e'); // Battery ↕
+    setFlow('dot-grid','pipe-grid', grid>10?'flow-up':'flow-down', grid,'#3b82f6');     // Grid ↕
+
+    const t = d.time ? new Date(d.time) : new Date();
+    document.getElementById('last-seen').textContent = 'Last update: '+t.toLocaleTimeString();
+  }
+
+  function mkChart(id, datasets, opts={}){
+    const ctx = document.getElementById(id).getContext('2d');
+    charts[id] = new Chart(ctx, {
+      type: opts.type||'line',
+      data:{ labels:[], datasets },
+      options:{
+        responsive:true, animation:false,
+        scales:{
+          x:{ ticks:{color:'#8892a4',maxTicksLimit:8}, grid:{color:'#2a2d3e'} },
+          y:{ ticks:{color:'#8892a4'}, grid:{color:'#2a2d3e'}, beginAtZero:!!opts.zero }
+        },
+        plugins:{ legend:{ labels:{color:'#e2e8f0',boxWidth:12} } },
+        ...opts.extra
+      }
+    });
+  }
+
+  function updChart(id, labels, datasetValues){
+    const c = charts[id]; if(!c) return;
+    c.data.labels = labels;
+    datasetValues.forEach((v,i)=>{ c.data.datasets[i].data=v; });
+    c.update('none');
+  }
+
+  function tsLabel(iso){
+    const t=new Date(iso);
+    return `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+  }
+
+  async function loadCharts(){
+    // PV + Load
+    const [pvH, loadH] = await Promise.all([
+      fetch('/api/history/pv_power_w?hours=24').then(r=>r.json()),
+      fetch('/api/history/load_power_w?hours=24').then(r=>r.json()),
+    ]);
+    const pvLabels = pvH.map(d=>tsLabel(d.time));
+    if(!charts['c-power']){
+      mkChart('c-power',[
+        {label:'PV (W)', data:pvH.map(d=>d.value), borderColor:'#eab308', backgroundColor:'rgba(234,179,8,.08)', tension:.3, pointRadius:0, fill:true},
+        {label:'Load (W)', data:loadH.map(d=>d.value), borderColor:'#f97316', backgroundColor:'rgba(249,115,22,.08)', tension:.3, pointRadius:0, fill:true},
+      ]);
+    } else {
+      updChart('c-power', pvLabels, [pvH.map(d=>d.value), loadH.map(d=>d.value)]);
+    }
+
+    // SoC
+    const socH = await fetch('/api/history/battery_soc_pct?hours=24').then(r=>r.json());
+    if(!charts['c-soc']){
+      mkChart('c-soc',[
+        {label:'SoC (%)', data:socH.map(d=>d.value), borderColor:'#22c55e', backgroundColor:'rgba(34,197,94,.1)', tension:.3, pointRadius:0, fill:true},
+      ],{zero:true});
+    } else {
+      updChart('c-soc', socH.map(d=>tsLabel(d.time)), [socH.map(d=>d.value)]);
+    }
+
+    // Daily yield
+    const yldH = await fetch('/api/yield').then(r=>r.json());
+    if(!charts['c-yield']){
+      mkChart('c-yield',[
+        {label:'kWh', data:yldH.map(d=>d.value), backgroundColor:'rgba(234,179,8,.6)', borderRadius:4},
+      ],{type:'bar',zero:true,extra:{plugins:{legend:{display:false}}}});
+    } else {
+      const c=charts['c-yield'];
+      c.data.labels=yldH.map(d=>{ const t=new Date(d.time); return `${t.getMonth()+1}/${t.getDate()}`; });
+      c.data.datasets[0].data=yldH.map(d=>d.value);
+      c.update('none');
+    }
+
+    // Battery power
+    const batH = await fetch('/api/history/battery_power_w?hours=24').then(r=>r.json());
+    if(!charts['c-bat']){
+      mkChart('c-bat',[
+        {label:'Battery (W)', data:batH.map(d=>d.value), borderColor:'#a855f7', backgroundColor:'rgba(168,85,247,.08)', tension:.3, pointRadius:0, fill:true},
+      ],{zero:false});
+    } else {
+      updChart('c-bat', batH.map(d=>tsLabel(d.time)), [batH.map(d=>d.value)]);
+    }
+  }
+
+  async function refresh(){ await Promise.all([loadLive(), loadCharts()]); }
+
+  refresh();
+  setInterval(loadLive, 10000);
+  setInterval(loadCharts, 60000);
+</script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+# Solar & Battery system configuration.
+# Set collector.type to one of: mqtt | modbus | solarman
+# Only the matching section needs to be filled in.
+
+system:
+  name: Home Solar System
+  # Total installed PV nameplate capacity
+  pv_capacity_kwp: 3.0
+
+battery:
+  capacity_kwh: 10.0
+  # Collector will alert and log when SoC drops below this
+  min_soc_pct: 20
+  max_soc_pct: 100
+
+# ─────────────────────────────────────────────────────────
+# OPTION 1 — MQTT  (recommended: Solar Assistant on a Pi)
+#
+# Solar Assistant (https://solar-assistant.io) reads 100+
+# inverter brands via RS232/USB and publishes all metrics
+# to MQTT in a consistent format. Install on the same Pi
+# running Pi-hole if you like.
+# ─────────────────────────────────────────────────────────
+collector:
+  type: mqtt        # mqtt | modbus | solarman
+  poll_interval_s: 10   # only used by modbus / solarman
+
+mqtt:
+  # Solar Assistant default topics — override if your inverter
+  # publishes to different paths (e.g. Victron VenusOS, Growatt, etc.)
+  topics:
+    pv_power_w:          solar_assistant/total/pv_power/state
+    battery_soc_pct:     solar_assistant/battery_1/state_of_charge/state
+    battery_power_w:     solar_assistant/total/battery_power/state
+    # Positive = charging, negative = discharging
+    load_power_w:        solar_assistant/total/load_power/state
+    grid_power_w:        solar_assistant/total/grid_power/state
+    # Positive = grid import, negative = export
+    battery_voltage_v:   solar_assistant/battery_1/voltage/state
+    inverter_temp_c:     solar_assistant/inverter_1/temperature/state
+    daily_yield_kwh:     solar_assistant/total/pv_energy_today/state
+
+# ─────────────────────────────────────────────────────────
+# OPTION 2 — Modbus TCP
+# Works with: Deye, Sunsynk, Axpert/Voltronic, Must, etc.
+# Default registers are Deye SUN-xK-SG04LP3 series.
+# ─────────────────────────────────────────────────────────
+modbus:
+  host: 192.168.1.x
+  port: 502
+  unit_id: 1
+  brand: deye   # deye | axpert | generic (for display only)
+  registers:
+    # Register numbers are decimal; scale = divisor to get real unit
+    pv1_power_w:       { reg: 186, scale: 1 }
+    pv2_power_w:       { reg: 187, scale: 1 }
+    battery_soc_pct:   { reg: 103, scale: 1 }
+    battery_voltage_v: { reg: 183, scale: 10 }
+    battery_power_w:   { reg: 190, scale: 1, signed: true }
+    load_power_w:      { reg: 178, scale: 1 }
+    grid_power_w:      { reg: 169, scale: 1, signed: true }
+    inverter_temp_c:   { reg: 90,  scale: 10 }
+    daily_yield_kwh:   { reg: 70,  scale: 10 }
+
+# ─────────────────────────────────────────────────────────
+# OPTION 3 — SolarMan local API
+# Works with Deye/Shinewi inverters via the WiFi data logger
+# dongle (LSW-3 / LSE-3). No cloud needed — purely local.
+# ─────────────────────────────────────────────────────────
+solarman:
+  host: 192.168.1.x     # IP of the WiFi dongle on your LAN
+  port: 8899
+  # Serial number printed on the dongle sticker
+  serial: 0
+  # Parameter names vary slightly by firmware; common ones below.
+  # Run: python -m pysolarmanv5.cli --host <ip> --serial <sn>
+  # to dump all available parameters from your specific unit.
+  param_map:
+    pv_power_w:        "Total DC Power"
+    battery_soc_pct:   "Battery SOC"
+    battery_power_w:   "Battery Power"
+    load_power_w:      "Total Active Load Power"
+    grid_power_w:      "Total Grid Power"
+    battery_voltage_v: "Battery Voltage"
+    inverter_temp_c:   "DC Temperature"
+    daily_yield_kwh:   "Daily Generation"
