@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Power Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3e;
+      --text: #e2e8f0; --muted: #8892a4;
+      --green: #22c55e; --red: #ef4444; --blue: #3b82f6;
+      --yellow: #eab308; --orange: #f97316; --purple: #a855f7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between;
+    }
+    header h1 { font-size: 1.2rem; font-weight: 700; color: var(--yellow); }
+    nav a { color: var(--muted); text-decoration: none; font-size: 0.85rem; margin-left: 1.2rem; }
+    nav a:hover { color: var(--text); }
+    nav a.cta {
+      background: var(--blue); color: #fff; padding: 0.4rem 0.9rem;
+      border-radius: 6px; font-weight: 600;
+    }
+
+    main { max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem; }
+
+    /* Stat cards */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem 1.4rem; }
+    .stat-card .label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4rem; }
+    .stat-card .value { font-size: 2rem; font-weight: 700; line-height: 1; }
+    .stat-card .sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.35rem; }
+    .stat-card.yellow .value { color: var(--yellow); }
+    .stat-card.green .value  { color: var(--green); }
+    .stat-card.red .value    { color: var(--red); }
+    .stat-card.blue .value   { color: var(--blue); }
+    .stat-card.orange .value { color: var(--orange); }
+
+    /* Days remaining pill */
+    #days-pill {
+      display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 2px 8px;
+      border-radius: 20px; margin-top: 0.3rem;
+    }
+    #days-pill.ok { background: rgba(34,197,94,0.15); color: var(--green); }
+    #days-pill.warn { background: rgba(234,179,8,0.15); color: var(--yellow); }
+    #days-pill.danger { background: rgba(239,68,68,0.15); color: var(--red); }
+
+    .row { display: grid; gap: 1rem; margin-bottom: 1rem; }
+    .row.col-2 { grid-template-columns: 1fr 1fr; }
+    .row.col-3 { grid-template-columns: 2fr 1fr 1fr; }
+
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; }
+    .panel h2 { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem; }
+
+    canvas { width: 100% !important; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { text-align: left; font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 0 0 0.5rem; border-bottom: 1px solid var(--border); }
+    td { padding: 0.45rem 0; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    .bar-bg { background: var(--border); border-radius: 3px; height: 6px; overflow: hidden; width: 80px; }
+    .bar-fill { height: 100%; border-radius: 3px; background: var(--yellow); }
+
+    .no-data { color: var(--muted); font-size: 0.85rem; padding: 1rem 0; }
+
+    .last-updated { font-size: 0.72rem; color: var(--muted); margin-bottom: 1.5rem; }
+
+    @media (max-width: 900px) {
+      .row.col-2, .row.col-3 { grid-template-columns: 1fr; }
+      header { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>&#9889; Power Dashboard</h1>
+  <nav>
+    <a href="/appliances">Appliances</a>
+    <a href="/entry" class="cta">+ Log Reading</a>
+  </nav>
+</header>
+
+<main>
+  <p class="last-updated" id="last-updated">Loading&hellip;</p>
+
+  <!-- Stat cards -->
+  <div class="stat-grid">
+    <div class="stat-card yellow">
+      <div class="label">Remaining Credit</div>
+      <div class="value" id="stat-remaining">—</div>
+      <div class="sub">kWh on meter</div>
+    </div>
+    <div class="stat-card" id="days-card">
+      <div class="label">Est. Days Remaining</div>
+      <div class="value" id="stat-days">—</div>
+      <div class="sub"><span id="days-pill" class="ok"></span></div>
+    </div>
+    <div class="stat-card blue">
+      <div class="label">Instant Load</div>
+      <div class="value" id="stat-load">—</div>
+      <div class="sub">Watts at last reading</div>
+    </div>
+    <div class="stat-card orange">
+      <div class="label">Daily Usage Rate</div>
+      <div class="value" id="stat-rate">—</div>
+      <div class="sub">kWh/day (7-day avg)</div>
+    </div>
+    <div class="stat-card green">
+      <div class="label">Lifetime Total</div>
+      <div class="value" id="stat-lifetime">—</div>
+      <div class="sub">kWh all-time</div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="row col-2">
+    <div class="panel">
+      <h2>Remaining Credit (kWh) — 30 days</h2>
+      <canvas id="remaining-chart" height="130"></canvas>
+    </div>
+    <div class="panel">
+      <h2>Instant Load (W) — 7 days</h2>
+      <canvas id="load-chart" height="130"></canvas>
+    </div>
+  </div>
+
+  <!-- Appliance breakdown -->
+  <div class="row col-3">
+    <div class="panel">
+      <h2>Estimated Daily Usage by Appliance</h2>
+      <table id="appliance-table">
+        <thead><tr><th>Appliance</th><th>Room</th><th>kWh/day</th><th></th></tr></thead>
+        <tbody><tr><td colspan="4" class="no-data">No appliance data yet. <a href="/appliances" style="color:var(--blue)">Log readings →</a></td></tr></tbody>
+      </table>
+    </div>
+    <div class="panel" style="grid-column: span 2;">
+      <h2>Usage by Room</h2>
+      <canvas id="room-chart" height="160"></canvas>
+    </div>
+  </div>
+</main>
+
+<script>
+  let remainingChart, loadChart, roomChart;
+  const COLORS = ['#eab308','#3b82f6','#22c55e','#f97316','#a855f7','#ef4444','#06b6d4','#ec4899'];
+
+  function fmt(v, dec=1) { return v == null ? '—' : Number(v).toFixed(dec); }
+
+  async function loadSummary() {
+    const d = await fetch('/api/summary').then(r => r.json());
+    const r = d.reading || {};
+
+    document.getElementById('stat-remaining').textContent = fmt(r.remaining_kwh);
+    document.getElementById('stat-load').textContent = r.instant_load_w != null ? Math.round(r.instant_load_w) : '—';
+    document.getElementById('stat-rate').textContent = d.rate_kwh_per_day != null ? fmt(d.rate_kwh_per_day) : '—';
+    document.getElementById('stat-lifetime').textContent = fmt(r.lifetime_kwh, 1);
+
+    const days = d.days_left;
+    document.getElementById('stat-days').textContent = days != null ? fmt(days, 1) : '—';
+    const pill = document.getElementById('days-pill');
+    if (days != null) {
+      if (days > 7) { pill.textContent = 'OK'; pill.className = 'ok'; }
+      else if (days > 3) { pill.textContent = 'Low'; pill.className = 'warn'; }
+      else { pill.textContent = 'Critical'; pill.className = 'danger'; }
+    }
+
+    if (r.time) {
+      const t = new Date(r.time);
+      document.getElementById('last-updated').textContent =
+        'Last reading: ' + t.toLocaleString();
+    }
+  }
+
+  async function loadRemainingChart() {
+    const data = await fetch('/api/history/remaining').then(r => r.json());
+    if (!data.length) return;
+    const labels = data.map(d => {
+      const t = new Date(d.time);
+      return (t.getMonth()+1)+'/'+t.getDate();
+    });
+    const values = data.map(d => d.value);
+
+    if (!remainingChart) {
+      const ctx = document.getElementById('remaining-chart').getContext('2d');
+      remainingChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{ label: 'Remaining kWh', data: values, borderColor: '#eab308', backgroundColor: 'rgba(234,179,8,0.1)', tension: 0.3, pointRadius: 3, fill: true }]
+        },
+        options: {
+          responsive: true, animation: false,
+          scales: {
+            x: { ticks: { color: '#8892a4', maxTicksLimit: 10 }, grid: { color: '#2a2d3e' } },
+            y: { ticks: { color: '#8892a4' }, grid: { color: '#2a2d3e' }, beginAtZero: true }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    } else {
+      remainingChart.data.labels = labels;
+      remainingChart.data.datasets[0].data = values;
+      remainingChart.update('none');
+    }
+  }
+
+  async function loadLoadChart() {
+    const data = await fetch('/api/history/load').then(r => r.json());
+    if (!data.length) return;
+    const labels = data.map(d => {
+      const t = new Date(d.time);
+      return (t.getMonth()+1)+'/'+t.getDate()+' '+t.getHours()+':'+String(t.getMinutes()).padStart(2,'0');
+    });
+    const values = data.map(d => d.value);
+
+    if (!loadChart) {
+      const ctx = document.getElementById('load-chart').getContext('2d');
+      loadChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{ label: 'Load (W)', data: values, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', tension: 0.3, pointRadius: 3, fill: true }]
+        },
+        options: {
+          responsive: true, animation: false,
+          scales: {
+            x: { ticks: { color: '#8892a4', maxTicksLimit: 8 }, grid: { color: '#2a2d3e' } },
+            y: { ticks: { color: '#8892a4' }, grid: { color: '#2a2d3e' }, beginAtZero: true }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    } else {
+      loadChart.data.labels = labels;
+      loadChart.data.datasets[0].data = values;
+      loadChart.update('none');
+    }
+  }
+
+  async function loadAppliances() {
+    const data = await fetch('/api/appliances').then(r => r.json());
+    if (!data.length) return;
+
+    const tbody = document.querySelector('#appliance-table tbody');
+    const max = data[0].est_daily_kwh;
+    tbody.innerHTML = data.map(a => {
+      const pct = max > 0 ? Math.round(a.est_daily_kwh / max * 100) : 0;
+      return `<tr>
+        <td>${a.appliance}</td>
+        <td style="color:var(--muted)">${a.room}</td>
+        <td>${a.est_daily_kwh.toFixed(3)}</td>
+        <td><div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div></td>
+      </tr>`;
+    }).join('');
+
+    // Room aggregation for pie
+    const roomMap = {};
+    data.forEach(a => {
+      roomMap[a.room] = (roomMap[a.room] || 0) + a.est_daily_kwh;
+    });
+    const rooms = Object.keys(roomMap);
+    const vals = rooms.map(r => roomMap[r]);
+
+    if (!roomChart) {
+      const ctx = document.getElementById('room-chart').getContext('2d');
+      roomChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: rooms,
+          datasets: [{ label: 'kWh/day', data: vals, backgroundColor: COLORS, borderRadius: 6 }]
+        },
+        options: {
+          responsive: true, animation: false, indexAxis: 'y',
+          scales: {
+            x: { ticks: { color: '#8892a4' }, grid: { color: '#2a2d3e' } },
+            y: { ticks: { color: '#e2e8f0' }, grid: { display: false } }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    } else {
+      roomChart.data.labels = rooms;
+      roomChart.data.datasets[0].data = vals;
+      roomChart.update('none');
+    }
+  }
+
+  async function refresh() {
+    await Promise.all([loadSummary(), loadRemainingChart(), loadLoadChart(), loadAppliances()]);
+  }
+
+  refresh();
+  setInterval(refresh, 60000);
+</script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>Log Meter Reading</title>
+  <style>
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3e;
+      --text: #e2e8f0; --muted: #8892a4; --blue: #3b82f6;
+      --green: #22c55e; --red: #ef4444; --yellow: #eab308;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+    nav {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem;
+    }
+    nav a { color: var(--muted); text-decoration: none; font-size: 0.85rem; }
+    nav a.active { color: var(--blue); font-weight: 600; }
+    nav span { color: var(--border); }
+
+    .container { max-width: 480px; margin: 2rem auto; padding: 0 1rem; }
+
+    h1 { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .subtitle { font-size: 0.85rem; color: var(--muted); margin-bottom: 1.5rem; }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+
+    .field { margin-bottom: 1.2rem; }
+    label { display: block; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
+    input[type="number"], input[type="text"], textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); font-size: 1.1rem; padding: 0.75rem 1rem; outline: none;
+      -webkit-appearance: none;
+    }
+    input[type="number"]:focus, input[type="text"]:focus, textarea:focus {
+      border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    }
+    .unit { font-size: 0.75rem; color: var(--muted); margin-top: 0.3rem; }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 1.2rem 0; }
+
+    .optional-label { font-size: 0.7rem; color: var(--yellow); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.8rem; }
+
+    button[type="submit"] {
+      width: 100%; background: var(--blue); color: #fff; border: none; border-radius: 10px;
+      font-size: 1rem; font-weight: 600; padding: 1rem; cursor: pointer; margin-top: 0.5rem;
+      letter-spacing: 0.02em;
+    }
+    button[type="submit"]:active { opacity: 0.85; }
+
+    .alert { border-radius: 8px; padding: 0.9rem 1rem; font-size: 0.9rem; margin-bottom: 1rem; }
+    .alert.success { background: rgba(34,197,94,0.1); border: 1px solid var(--green); color: var(--green); }
+    .alert.error { background: rgba(239,68,68,0.1); border: 1px solid var(--red); color: var(--red); }
+
+    .meter-hint {
+      background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2);
+      border-radius: 8px; padding: 0.8rem 1rem; margin-bottom: 1.2rem; font-size: 0.8rem; color: var(--muted);
+    }
+    .meter-hint strong { color: var(--blue); display: block; margin-bottom: 0.2rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  </style>
+</head>
+<body>
+<nav>
+  <a href="/">Dashboard</a>
+  <span>/</span>
+  <a href="/entry" class="active">Log Meter</a>
+  <span>/</span>
+  <a href="/appliances">Appliances</a>
+</nav>
+
+<div class="container">
+  <h1>Log Meter Reading</h1>
+  <p class="subtitle">Landis+Gyr JH145 &mdash; enter values shown on the display</p>
+
+  {% if success %}
+  <div class="alert success">&#10003; Reading saved successfully.</div>
+  {% endif %}
+  {% if error %}
+  <div class="alert error">Error: {{ error }}</div>
+  {% endif %}
+
+  <form method="POST">
+    <div class="card">
+      <div class="meter-hint">
+        <strong>Tip — what to read</strong>
+        Cycle through the JH145 display: <b>Instant Load (W)</b> &rarr; <b>Total kWh used</b> &rarr; <b>Remaining kWh</b>
+      </div>
+
+      <div class="field">
+        <label>Instant Load</label>
+        <input type="number" name="instant_load_w" placeholder="e.g. 850" step="1" min="0" required inputmode="decimal"/>
+        <div class="unit">Watts (W) &mdash; current draw shown on meter</div>
+      </div>
+
+      <div class="field">
+        <label>Total Lifetime kWh Used</label>
+        <input type="number" name="lifetime_kwh" placeholder="e.g. 4521.3" step="0.1" min="0" required inputmode="decimal"/>
+        <div class="unit">kWh &mdash; cumulative total, never resets</div>
+      </div>
+
+      <div class="field">
+        <label>Remaining kWh (prepaid credit)</label>
+        <input type="number" name="remaining_kwh" placeholder="e.g. 38.5" step="0.1" min="0" required inputmode="decimal"/>
+        <div class="unit">kWh &mdash; credit left since last top-up</div>
+      </div>
+
+      <hr class="divider"/>
+
+      <div class="optional-label">&#x2605; Topped up today? (optional)</div>
+
+      <div class="field">
+        <label>Top-up Amount</label>
+        <input type="number" name="topup_kwh" placeholder="e.g. 50" step="0.1" min="0" inputmode="decimal"/>
+        <div class="unit">kWh purchased in this top-up</div>
+      </div>
+
+      <div class="field">
+        <label>Notes (optional)</label>
+        <input type="text" name="notes" placeholder="e.g. guests visiting, heater on all day"/>
+      </div>
+    </div>
+
+    <button type="submit">Save Reading</button>
+  </form>
+</div>
+</body>
+</html>

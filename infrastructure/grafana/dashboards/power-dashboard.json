@@ -1,0 +1,130 @@
+{
+  "title": "Power Dashboard",
+  "uid": "power-dashboard",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-30d", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Remaining Credit (kWh)",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": {
+        "defaults": { "unit": "kwh",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "yellow", "value": 10 },
+            { "color": "green", "value": 30 }
+          ]}
+        }
+      },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"power_meter\" and r._field == \"remaining_kwh\")\n  |> last()",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 2, "type": "stat", "title": "Instant Load",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": {
+        "defaults": { "unit": "watt", "color": { "mode": "fixed", "fixedColor": "blue" } }
+      },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"power_meter\" and r._field == \"instant_load_w\")\n  |> last()",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 3, "type": "stat", "title": "Daily Usage Rate",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "options": { "colorMode": "background", "reduceOptions": { "calcs": ["mean"] } },
+      "fieldConfig": { "defaults": { "unit": "kwh", "color": { "mode": "fixed", "fixedColor": "orange" } } },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"power_meter\" and r._field == \"lifetime_kwh\")\n  |> difference()\n  |> mean()",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 4, "type": "stat", "title": "Lifetime Total",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "options": { "colorMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "kwh", "color": { "mode": "fixed", "fixedColor": "green" } } },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"power_meter\" and r._field == \"lifetime_kwh\")\n  |> last()",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 5, "type": "gauge", "title": "Credit Status",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "minVizValue": 0, "maxVizValue": 100 },
+      "fieldConfig": {
+        "defaults": { "unit": "kwh", "min": 0, "max": 100,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "yellow", "value": 10 },
+            { "color": "green", "value": 30 }
+          ]}
+        }
+      },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"power_meter\" and r._field == \"remaining_kwh\")\n  |> last()",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Remaining Credit Over Time (kWh)",
+      "gridPos": { "x": 0, "y": 4, "w": 16, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "kwh", "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "color": { "mode": "fixed", "fixedColor": "yellow" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null }, { "color": "yellow", "value": 10 }, { "color": "green", "value": 30 }
+          ]}
+        }
+      },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"power_meter\" and r._field == \"remaining_kwh\")\n  |> sort(columns: [\"_time\"])",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "Top-up Events",
+      "gridPos": { "x": 16, "y": 4, "w": 8, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "kwh", "custom": { "drawStyle": "bars", "fillOpacity": 60 }, "color": { "mode": "fixed", "fixedColor": "green" } } },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"power_meter\" and r._field == \"topup_kwh\")\n  |> sort(columns: [\"_time\"])",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Instant Load (W) — 7 Days",
+      "gridPos": { "x": 0, "y": 12, "w": 24, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "watt", "custom": { "lineWidth": 2, "fillOpacity": 8 }, "color": { "mode": "fixed", "fixedColor": "blue" } } },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: -7d)\n  |> filter(fn: (r) => r._measurement == \"power_meter\" and r._field == \"instant_load_w\")\n  |> sort(columns: [\"_time\"])",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 9, "type": "table", "title": "Appliance Usage Estimates (kWh/day)",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 10 },
+      "options": { "sortBy": [{ "displayName": "est_daily_kwh", "desc": true }] },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"power_appliance\" and r._field == \"est_daily_kwh\")\n  |> last()\n  |> group(columns: [\"room\", \"appliance\"])\n  |> sort(columns: [\"_value\"], desc: true)",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 10, "type": "piechart", "title": "Usage by Room (kWh/day)",
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 10 },
+      "options": { "pieType": "donut", "legendDisplayMode": "table", "placement": "right" },
+      "targets": [{
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"power_appliance\" and r._field == \"est_daily_kwh\")\n  |> last()\n  |> group(columns: [\"room\"])\n  |> sum()\n  |> group()",
+        "refId": "A"
+      }]
+    }
+  ]
+}

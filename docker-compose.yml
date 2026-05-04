@@ -33,14 +33,15 @@ services:
       - ./infrastructure/docker/mosquitto.conf:/mosquitto/config/mosquitto.conf
       - mosquitto_data:/mosquitto/data
 
-  power-collector:
+  power-dashboard:
     build: ./projects/power-dashboard
-    container_name: power-collector
+    container_name: power-dashboard
     restart: unless-stopped
+    ports:
+      - "5001:5001"
     env_file: .env
     depends_on:
       - influxdb
-      - mosquitto
 
   water-collector:
     build: ./projects/water-monitor

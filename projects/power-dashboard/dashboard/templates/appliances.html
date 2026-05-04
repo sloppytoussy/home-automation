@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>Log Appliance Reading</title>
+  <style>
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3e;
+      --text: #e2e8f0; --muted: #8892a4; --blue: #3b82f6;
+      --green: #22c55e; --red: #ef4444; --yellow: #eab308; --orange: #f97316;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+    nav {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem;
+    }
+    nav a { color: var(--muted); text-decoration: none; font-size: 0.85rem; }
+    nav a.active { color: var(--blue); font-weight: 600; }
+    nav span { color: var(--border); }
+
+    .container { max-width: 520px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.3rem; }
+    .subtitle { font-size: 0.85rem; color: var(--muted); margin-bottom: 1.5rem; }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+
+    .field { margin-bottom: 1.2rem; }
+    label { display: block; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
+    select, input[type="number"] {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 1rem; padding: 0.75rem 1rem;
+      outline: none; -webkit-appearance: none; appearance: none;
+    }
+    select:focus, input[type="number"]:focus {
+      border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    }
+    .unit { font-size: 0.75rem; color: var(--muted); margin-top: 0.3rem; }
+
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    button[type="submit"] {
+      width: 100%; background: var(--orange); color: #fff; border: none; border-radius: 10px;
+      font-size: 1rem; font-weight: 600; padding: 1rem; cursor: pointer; margin-top: 0.5rem;
+    }
+    button[type="submit"]:active { opacity: 0.85; }
+
+    .alert { border-radius: 8px; padding: 0.9rem 1rem; font-size: 0.9rem; margin-bottom: 1rem; }
+    .alert.success { background: rgba(34,197,94,0.1); border: 1px solid var(--green); color: var(--green); }
+    .alert.error   { background: rgba(239,68,68,0.1);  border: 1px solid var(--red);   color: var(--red); }
+
+    /* Rated watts quick-pick chips */
+    .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
+    .chip {
+      background: var(--border); border: none; border-radius: 20px; color: var(--text);
+      font-size: 0.75rem; padding: 0.3rem 0.7rem; cursor: pointer;
+    }
+    .chip:hover { background: var(--blue); color: #fff; }
+
+    /* Room sections in the reference table */
+    .room-section { margin-bottom: 1.2rem; }
+    .room-title { font-size: 0.72rem; color: var(--yellow); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.5rem; }
+    .appliance-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .ap-chip {
+      background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2);
+      border-radius: 6px; color: var(--muted); font-size: 0.78rem; padding: 0.3rem 0.7rem; cursor: pointer;
+    }
+    .ap-chip:hover { background: rgba(59,130,246,0.2); color: var(--text); }
+    .ap-chip span { color: var(--blue); margin-left: 4px; }
+  </style>
+</head>
+<body>
+<nav>
+  <a href="/">Dashboard</a>
+  <span>/</span>
+  <a href="/entry">Log Meter</a>
+  <span>/</span>
+  <a href="/appliances" class="active">Appliances</a>
+</nav>
+
+<div class="container">
+  <h1>Log Appliance Reading</h1>
+  <p class="subtitle">Record measured or rated wattage per appliance to build your usage profile.</p>
+
+  {% if success %}
+  <div class="alert success">&#10003; Appliance reading saved.</div>
+  {% endif %}
+  {% if error %}
+  <div class="alert error">Error: {{ error }}</div>
+  {% endif %}
+
+  <form method="POST" id="apForm">
+    <div class="card">
+
+      <!-- Quick-pick from config -->
+      <div class="field">
+        <label>Quick Pick from Room</label>
+        {% for room in rooms %}
+        <div class="room-section">
+          <div class="room-title">{{ room.name }}</div>
+          <div class="appliance-chips">
+            {% for ap in room.appliances %}
+            <div class="ap-chip" onclick="fillForm('{{ room.name }}', '{{ ap.name }}', {{ ap.rated_watts }})">
+              {{ ap.name }}<span>{{ ap.rated_watts }}W</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="row-2">
+        <div class="field">
+          <label>Room</label>
+          <select name="room" id="sel-room" required>
+            <option value="">Select room…</option>
+            {% for room in rooms %}
+            <option value="{{ room.name }}">{{ room.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>Appliance</label>
+          <select name="appliance" id="sel-appliance" required>
+            <option value="">Select appliance…</option>
+            {% for room in rooms %}
+            {% for ap in room.appliances %}
+            <option value="{{ ap.name }}" data-room="{{ room.name }}">{{ ap.name }}</option>
+            {% endfor %}
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Measured / Rated Wattage</label>
+        <input type="number" name="watts" id="inp-watts" placeholder="e.g. 850" step="1" min="0" required inputmode="decimal"/>
+        <div class="unit">Watts — use a plug-in energy monitor for accuracy, or rated label value</div>
+        <div class="chips">
+          <button type="button" class="chip" onclick="setW(5)">5W LED</button>
+          <button type="button" class="chip" onclick="setW(60)">60W Fan</button>
+          <button type="button" class="chip" onclick="setW(100)">100W TV</button>
+          <button type="button" class="chip" onclick="setW(150)">150W Fridge</button>
+          <button type="button" class="chip" onclick="setW(750)">750W Microwave</button>
+          <button type="button" class="chip" onclick="setW(1000)">1kW Kettle</button>
+          <button type="button" class="chip" onclick="setW(1500)">1.5kW Iron</button>
+          <button type="button" class="chip" onclick="setW(2000)">2kW Geyser</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Typical Daily Hours in Use</label>
+        <input type="number" name="daily_hours" id="inp-hours" placeholder="e.g. 4" step="0.5" min="0" max="24" inputmode="decimal"/>
+        <div class="unit">Hours/day — used to estimate daily kWh consumption</div>
+      </div>
+
+    </div>
+
+    <button type="submit">Save Appliance Reading</button>
+  </form>
+</div>
+
+<script>
+  const rooms = {{ rooms | tojson }};
+
+  function fillForm(room, appliance, watts) {
+    document.getElementById('sel-room').value = room;
+    document.getElementById('sel-appliance').value = appliance;
+    document.getElementById('inp-watts').value = watts;
+    document.getElementById('inp-watts').focus();
+  }
+
+  function setW(w) {
+    document.getElementById('inp-watts').value = w;
+  }
+
+  // Filter appliance dropdown by selected room
+  document.getElementById('sel-room').addEventListener('change', function() {
+    const sel = document.getElementById('sel-appliance');
+    Array.from(sel.options).forEach(opt => {
+      if (!opt.value) return;
+      opt.hidden = opt.dataset.room !== this.value;
+    });
+    sel.value = '';
+  });
+</script>
+</body>
+</html>

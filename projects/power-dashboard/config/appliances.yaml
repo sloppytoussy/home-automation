@@ -1,0 +1,81 @@
+# Room and appliance registry for power usage profiling.
+# rated_watts: nameplate / typical wattage — update after measuring with a plug monitor.
+# Add, remove, or rename rooms and appliances freely; they drive the entry form dropdowns.
+
+rooms:
+  - name: Living Room
+    appliances:
+      - name: TV
+        rated_watts: 100
+      - name: Decoder / Set-top Box
+        rated_watts: 20
+      - name: Sound Bar
+        rated_watts: 50
+      - name: Ceiling Fan
+        rated_watts: 60
+      - name: LED Lights
+        rated_watts: 20
+
+  - name: Kitchen
+    appliances:
+      - name: Fridge
+        rated_watts: 150
+      - name: Microwave
+        rated_watts: 1000
+      - name: Kettle
+        rated_watts: 2000
+      - name: Toaster
+        rated_watts: 800
+      - name: LED Lights
+        rated_watts: 15
+
+  - name: Main Bedroom
+    appliances:
+      - name: Phone Charger
+        rated_watts: 10
+      - name: Laptop Charger
+        rated_watts: 65
+      - name: Fan
+        rated_watts: 55
+      - name: LED Lights
+        rated_watts: 10
+      - name: TV
+        rated_watts: 80
+
+  - name: Bedroom 2
+    appliances:
+      - name: Phone Charger
+        rated_watts: 10
+      - name: Fan
+        rated_watts: 55
+      - name: LED Lights
+        rated_watts: 10
+
+  - name: Bathroom
+    appliances:
+      - name: LED Lights
+        rated_watts: 10
+      - name: Hair Dryer
+        rated_watts: 1800
+      - name: Electric Shaver
+        rated_watts: 15
+
+  - name: Laundry
+    appliances:
+      - name: Washing Machine
+        rated_watts: 500
+      - name: Iron
+        rated_watts: 1500
+      - name: LED Lights
+        rated_watts: 10
+
+  - name: Outside / Security
+    appliances:
+      - name: Gate Motor
+        rated_watts: 200
+      - name: Security Lights
+        rated_watts: 40
+      - name: CCTV / NVR
+        rated_watts: 30
+      - name: Wi-Fi Router
+        rated_watts: 15
