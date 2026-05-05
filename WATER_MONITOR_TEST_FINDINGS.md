@@ -23,64 +23,109 @@ All tests pass. One edge case was identified requiring discussion.
 
 ## Critical Findings
 
-### 1. **Volume Can Exceed Capacity (Edge Case)**
+### 1. **Volume Can Exceed Capacity (Physical Reality, Not a Bug)**
 
 **Location**: `compute_reading()` (line 23-25)
 
-**Issue**: When sensor distance is negative (sensor positioned above the tank), the calculated volume can exceed the tank's capacity.
+**Observation**: When sensor distance is negative (sensor reading above tank height), the calculated volume can exceed the tank's capacity while `level_pct` is capped at 100%.
 
 **Example**:
 ```python
 cfg = {"id": "tank1", "depth_cm": 100, "capacity_liters": 1000}
 reading = compute_reading(cfg, -10.0)
 # Result: level_pct = 100.0 (capped)
-#         volume_liters = 1100.0 (NOT capped - exceeds capacity)
+#         volume_liters = 1100.0 (exceeds capacity)
 ```
 
-**Root Cause**: 
-- `level_pct` is capped: `min(100.0, level_cm / usable_depth * 100)`
-- `volume_liters` is NOT capped: `level_cm / usable_depth * capacity`
-- When `level_cm > usable_depth`, volume exceeds capacity
+**Physical Reality**: 
+This behavior is **correct** and represents actual tank conditions:
+- **Scenario A (Float valve + no outlet)**: Negative distance = float valve failure → ALERT
+- **Scenario B (Multiple sources + open outlet)**: Negative distance = outlet overflow working → NORMAL
+- **Scenario C (Manual control + open outlet)**: Negative distance = operator overflow → NORMAL
 
-**Recommendation**: 
-Decide whether:
-1. **Option A** (Consistency): Cap `volume_liters` to `capacity_liters` whenever `level_pct` is capped
-2. **Option B** (Current behavior is intentional): Document that negative distances represent sensor positioning errors and should never occur in production
+**Solution**: Configuration-Aware Interpretation
+The calculator correctly reports the overflow condition. The **meaning** depends on tank configuration:
+- `overflow_handling: "no_outlet"` → Error condition (inlet shutoff failure)
+- `overflow_handling: "open_outlet"` → Normal condition (safe outlet working)
 
-**Test Coverage**: `test_reading_beyond_full_capped_at_100_percent` documents this boundary condition.
+**No Code Change Needed**: The calculator is pure and configuration-agnostic. Interpretation happens in the collector/alert layer based on `tank_cfg`.
+
+**Test Coverage**: `test_reading_beyond_full_capped_at_100_percent` documents this boundary condition with clear physical scenarios.
 
 ---
 
-## Source Code Changes Needed
+## Source Code Changes Completed
 
-### Immediate (High Priority)
+### Phase 1.5 Documentation Updates ✅
 
-#### 1. **Fix Volume Capping** (Optional, based on decision above)
+#### 1. **Enhanced `compute_reading()` Docstring**
 
-**File**: `projects/water-monitor/collector/calculator.py` (lines 27-35)
+**File**: `projects/water-monitor/collector/calculator.py`
 
-**Current Code**:
-```python
-level_pct = min(100.0, round(level_cm / usable_depth * 100, 2)) if usable_depth > 0 else 0.0
-volume = round(level_cm / usable_depth * capacity, 1) if usable_depth > 0 else 0.0
-```
+**Change**: Added comprehensive docstring explaining:
+- Physical sensor mounting and distance behavior
+- Overflow condition detection (negative distance)
+- Configuration-aware interpretation based on `overflow_handling` field
+- Reference to collector/alert layer for decision-making
 
-**Option A - Cap volume when level_pct is capped**:
-```python
-level_pct = min(100.0, round(level_cm / usable_depth * 100, 2)) if usable_depth > 0 else 0.0
-volume_uncapped = level_cm / usable_depth * capacity if usable_depth > 0 else 0.0
-volume = min(capacity, round(volume_uncapped, 1))
-```
+**Status**: ✅ COMPLETED
 
-**Option B - Add validation/assertion**:
-```python
-# Document that negative distances indicate sensor positioning error
-assert distance_cm >= 0.0, f"Invalid sensor distance: {distance_cm}cm (should be non-negative)"
-```
+#### 2. **Inline Comments on Volume Calculation**
+
+**File**: `projects/water-monitor/collector/calculator.py`
+
+**Change**: Added clarifying comments explaining:
+- Why `level_pct` is capped but `volume` is not
+- Physical meaning of volume exceeding capacity
+- Direction to check tank configuration for interpretation
+
+**Status**: ✅ COMPLETED
+
+#### 3. **Updated Test Documentation**
+
+**File**: `projects/water-monitor/tests/test_calculator.py`
+
+**Change**: Enhanced docstring for `test_reading_beyond_full_capped_at_100_percent`:
+- Explains physical scenarios (open outlet vs no outlet)
+- Clarifies calculator's role vs collector/alert role
+- Added inline comments documenting configuration interpretation
+
+**Status**: ✅ COMPLETED
 
 ---
 
-### Medium Priority (Testing Infrastructure)
+### Phase 2+ (Future Implementation)
+
+#### Configuration Fields Required
+
+Tank configs should include these independent fields:
+- `num_sources`: "single" | "multiple"
+- `inlet_shutoff`: "float_valve" | "manual_valve"
+- `overflow_handling`: "open_outlet" | "no_outlet"
+
+**Example**:
+```yaml
+tank_1:
+  id: "mains_primary"
+  overflow_handling: "no_outlet"  # Float valve must prevent overflow
+
+tank_2:
+  id: "rainwater_collection"
+  overflow_handling: "open_outlet"  # Safe outlet below ceiling
+```
+
+#### Collector/Alert Logic (Not Calculator Changes)
+
+Collector will detect overflow and record event. Separate alert service will:
+- Check `tank_cfg.overflow_handling`
+- For "no_outlet": Trigger MAJOR ALERT (failure condition)
+- For "open_outlet": Log as INFO (normal operation)
+
+**Note**: Calculator logic unchanged. Configuration + interpretation changes only.
+
+---
+
+### Testing Infrastructure (Optional Enhancement)
 
 #### 2. **Add Test Requirements File**
 

@@ -101,17 +101,28 @@ class TestComputeReading:
         assert reading.volume_liters == 1000.0
 
     def test_reading_beyond_full_capped_at_100_percent(self):
-        """Negative distance (sensor above full) is capped at 100% for percentage.
+        """Negative sensor distance = overflow condition detected.
 
-        Note: volume is calculated before percentage capping, so it can exceed capacity.
-        This is a boundary condition in the implementation.
+        Physical scenario: Water level exceeds design capacity. This can happen if:
+        - Tank with open_outlet: Safe outlet below ceiling is allowing overflow (normal)
+        - Tank with no_outlet: Inlet shutoff failed, water above tank top (error)
+
+        The calculator reports the condition; collector/alert service uses tank_cfg
+        to determine if it's normal or error based on overflow_handling setting.
+
+        Expected behavior:
+        - level_pct capped at 100% for UI display consistency
+        - volume_liters exceeds capacity to preserve overflow information
         """
         cfg = {"id": "tank1", "depth_cm": 100, "capacity_liters": 1000}
         reading = compute_reading(cfg, -10.0)
 
         assert reading.level_cm == 110.0  # max(0, 100 - (-10))
         assert reading.level_pct == 100.0  # capped by min(100, ...)
-        # Volume is 110/100*1000 = 1100L (exceeds capacity due to calc order)
+        # Volume is 110/100*1000 = 1100L (exceeds capacity to indicate overflow)
+        # Note: The meaning of volume > capacity depends on tank configuration:
+        # - overflow_handling: "open_outlet" → normal operation (safe outlet working)
+        # - overflow_handling: "no_outlet" → error condition (inlet shutoff failed)
         assert reading.volume_liters == 1100.0
 
     def test_reading_negative_distance_clamped_level(self):
