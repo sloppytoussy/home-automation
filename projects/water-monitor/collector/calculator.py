@@ -29,8 +29,17 @@ def compute_reading(tank_cfg: dict, distance_cm: float) -> TankReading:
       Water exceeding capacity means safe outlet is working → NORMAL condition
 
     Args:
-        tank_cfg: Dict with id, depth_cm, capacity_liters, sensor_offset_cm (optional),
-                  and configuration fields: num_sources, inlet_shutoff, overflow_handling
+        tank_cfg: Tank configuration dictionary with fields:
+            Required:
+                - id: Tank identifier (str)
+                - depth_cm: Physical tank depth in centimeters (float or str)
+                - capacity_liters: Tank capacity in liters (float or str)
+            Optional (Phase 1):
+                - sensor_offset_cm: Distance from ceiling to usable water top (default: 0)
+            Optional (Phase 2+ for alerting):
+                - num_sources: "single" | "multiple" (water source type)
+                - inlet_shutoff: "float_valve" | "manual_valve" (control method)
+                - overflow_handling: "open_outlet" | "no_outlet" (overflow management)
         distance_cm: Raw ultrasonic reading (cm from sensor to water surface)
 
     Returns:
@@ -39,6 +48,9 @@ def compute_reading(tank_cfg: dict, distance_cm: float) -> TankReading:
     Note: volume_liters can exceed capacity_liters when distance is negative.
     The collector/alert service should check tank_cfg to determine if this is
     normal operation (open outlet) or an error condition (inlet failure).
+
+    Phase 2+: Collector/alert layer will validate overflow_handling field and
+    trigger appropriate logging/alerting based on tank configuration.
     """
     depth = float(tank_cfg["depth_cm"])
     offset = float(tank_cfg.get("sensor_offset_cm", 0))

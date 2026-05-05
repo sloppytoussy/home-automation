@@ -125,6 +125,36 @@ class TestComputeReading:
         # - overflow_handling: "no_outlet" → error condition (inlet shutoff failed)
         assert reading.volume_liters == 1100.0
 
+    def test_reading_with_full_tank_config(self):
+        """Reading computation with full tank configuration (Phase 2+ ready).
+
+        Tank configuration includes all fields that will be used by Phase 2
+        collector/alert service for overflow interpretation. The calculator
+        itself doesn't use these fields, but including them ensures config
+        schema compatibility.
+        """
+        cfg = {
+            "id": "rainwater_tank",
+            "depth_cm": 120,
+            "capacity_liters": 1200,
+            "sensor_offset_cm": 5,
+            # Phase 2+ fields (not used by calculator, but validated by collector)
+            "num_sources": "multiple",
+            "inlet_shutoff": "float_valve",
+            "overflow_handling": "open_outlet",
+        }
+        reading = compute_reading(cfg, 60.0)
+
+        # Calculator computes with required fields, ignores Phase 2+ fields
+        assert reading.tank_id == "rainwater_tank"
+        assert reading.usable_depth_cm == 115.0  # 120 - 5
+        assert reading.level_cm == 55.0  # 115 - 60
+        assert reading.volume_liters == 573.9  # (55/115) * 1200 = 573.913...
+        assert reading.level_pct == 47.83
+
+        # Note: Collector/alert service will check overflow_handling field
+        # to determine if volume > capacity is normal or error condition
+
     def test_reading_negative_distance_clamped_level(self):
         """Negative distance is clamped to 0 for level_cm."""
         cfg = {"id": "tank1", "depth_cm": 100, "capacity_liters": 1000}
