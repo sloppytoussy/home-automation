@@ -1454,9 +1454,9 @@ function App() {
           <div className="eyebrow">{SUMMARY_ICONS.source} Tank 2 source</div>
           <div className="big" style={{ display: "flex", alignItems: "baseline", gap: 8, textTransform: "capitalize" }}>
             {tank2?.active_source ?? "—"}
-            {tank2 && <small style={{ color: "var(--accent)" }}>● live</small>}
+            {tank2?.reading?.time && <small style={{ color: "var(--accent)" }}>● live</small>}
           </div>
-          <div className="sub">auto-fallback armed</div>
+          <div className="sub">source configurable</div>
         </div>
         <div className="summary-tile">
           <div className="eyebrow">{SUMMARY_ICONS.rate} Today's use</div>
