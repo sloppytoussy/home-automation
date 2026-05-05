@@ -1,4 +1,8 @@
+from __future__ import annotations
+
+import datetime
 import os
+import re
 from pathlib import Path
 
 import yaml
@@ -10,6 +14,7 @@ load_dotenv()
 
 app = Flask(__name__)
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "tanks.yaml"
+INFLUX_REQUIRED_ENV = ("INFLUXDB_URL", "INFLUXDB_TOKEN", "INFLUXDB_ORG", "INFLUXDB_BUCKET")
 
 
 # ------------------------------------------------------------------
@@ -23,24 +28,42 @@ def load_tanks() -> list[dict]:
 
 def get_influx():
     return InfluxDBClient(
-        url=os.environ["INFLUXDB_URL"],
-        token=os.environ["INFLUXDB_TOKEN"],
-        org=os.environ["INFLUXDB_ORG"],
+        url=os.getenv("INFLUXDB_URL"),
+        token=os.getenv("INFLUXDB_TOKEN"),
+        org=os.getenv("INFLUXDB_ORG"),
     )
 
 
+def influx_bucket() -> str | None:
+    if not all(os.getenv(name) for name in INFLUX_REQUIRED_ENV):
+        return None
+    return os.getenv("INFLUXDB_BUCKET")
+
+
 def flux_query(flux: str) -> list:
+    org = os.getenv("INFLUXDB_ORG")
+    if not org:
+        return []
     with get_influx() as client:
-        tables = client.query_api().query(flux, org=os.environ["INFLUXDB_ORG"])
+        tables = client.query_api().query(flux, org=org)
         return [
             {**{rec.get_field(): rec.get_value()}, "time": rec.get_time(), **rec.values}
             for table in tables for rec in table.records
         ]
 
 
+def flux_query_safe(flux: str) -> list:
+    try:
+        return flux_query(flux)
+    except Exception:
+        return []
+
+
 def latest_reading(tank_id: str) -> dict | None:
-    bucket = os.environ["INFLUXDB_BUCKET"]
-    rows = flux_query(f'''
+    bucket = influx_bucket()
+    if not bucket:
+        return None
+    rows = flux_query_safe(f'''
         from(bucket: "{bucket}")
           |> range(start: -7d)
           |> filter(fn: (r) => r._measurement == "water_tank" and r.tank_id == "{tank_id}")
@@ -52,8 +75,10 @@ def latest_reading(tank_id: str) -> dict | None:
 
 
 def level_history(tank_id: str, days: int = 7) -> list[dict]:
-    bucket = os.environ["INFLUXDB_BUCKET"]
-    rows = flux_query(f'''
+    bucket = influx_bucket()
+    if not bucket:
+        return []
+    rows = flux_query_safe(f'''
         from(bucket: "{bucket}")
           |> range(start: -{days}d)
           |> filter(fn: (r) => r._measurement == "water_tank"
@@ -66,8 +91,10 @@ def level_history(tank_id: str, days: int = 7) -> list[dict]:
 
 def rolling_rate_lph(tank_id: str) -> float | None:
     """Litres per hour drain rate over last 24 h (negative delta = consumption)."""
-    bucket = os.environ["INFLUXDB_BUCKET"]
-    rows = flux_query(f'''
+    bucket = influx_bucket()
+    if not bucket:
+        return None
+    rows = flux_query_safe(f'''
         from(bucket: "{bucket}")
           |> range(start: -24h)
           |> filter(fn: (r) => r._measurement == "water_tank"
@@ -87,27 +114,149 @@ def rolling_rate_lph(tank_id: str) -> float | None:
     return round((v0 - v1) / delta_h, 2)
 
 
+def today_consumption_l(tank_id: str) -> float | None:
+    """Volume drop since midnight today."""
+    bucket = influx_bucket()
+    if not bucket:
+        return None
+    rows = flux_query_safe(f'''
+        from(bucket: "{bucket}")
+          |> range(start: today())
+          |> filter(fn: (r) => r._measurement == "water_tank"
+              and r.tank_id == "{tank_id}"
+              and r._field == "volume_liters")
+          |> sort(columns:["_time"])
+    ''')
+    if len(rows) < 2:
+        return None
+    first = rows[0].get("_value", rows[0].get("volume_liters"))
+    last = rows[-1].get("_value", rows[-1].get("volume_liters"))
+    if first is None or last is None:
+        return None
+    return max(0, round(first - last, 1))
+
+
+def avg_daily_consumption_l(tank_id: str) -> float | None:
+    """Average daily consumption over last 7 days."""
+    bucket = influx_bucket()
+    if not bucket:
+        return None
+    rows = flux_query_safe(f'''
+        from(bucket: "{bucket}")
+          |> range(start: -7d)
+          |> filter(fn: (r) => r._measurement == "water_tank"
+              and r.tank_id == "{tank_id}"
+              and r._field == "volume_liters")
+          |> sort(columns:["_time"])
+    ''')
+    if len(rows) < 2:
+        return None
+    first = rows[0].get("_value", rows[0].get("volume_liters"))
+    last = rows[-1].get("_value", rows[-1].get("volume_liters"))
+    if first is None or last is None:
+        return None
+    drop = max(0, first - last)
+    return round(drop / 7, 1)
+
+
+def pump_status(tank_cfg: dict) -> dict:
+    tank_id = tank_cfg["id"]
+    bucket = influx_bucket()
+    running = False
+    runtime_today_min = 0
+    if not bucket:
+        return {
+            "name": tank_cfg.get("pump", {}).get("name", "Dayliff DDA 1000P"),
+            "running": running,
+            "runtime_today_min": runtime_today_min,
+        }
+
+    rows = flux_query_safe(f'''
+        from(bucket: "{bucket}")
+          |> range(start: -5m)
+          |> filter(fn: (r) => r._measurement == "pump_state"
+              and r.tank_id == "{tank_id}")
+          |> last()
+    ''')
+    if rows:
+        running = bool(rows[0].get("_value", 0))
+
+    # Count ON samples today and convert to minutes (assumes ~60s poll interval)
+    on_rows = flux_query_safe(f'''
+        from(bucket: "{bucket}")
+          |> range(start: today())
+          |> filter(fn: (r) => r._measurement == "pump_state"
+              and r.tank_id == "{tank_id}"
+              and r._value == 1)
+          |> count()
+    ''')
+    if on_rows:
+        runtime_today_min = round(on_rows[0].get("_value", 0) / 60)
+
+    return {
+        "name": tank_cfg.get("pump", {}).get("name", "Dayliff DDA 1000P"),
+        "running": running,
+        "runtime_today_min": runtime_today_min,
+    }
+
+
+def sensor_status(tank_id: str) -> dict:
+    bucket = influx_bucket()
+    if not bucket:
+        return {"battery_pct": None, "last_seen_min": None}
+    rows = flux_query_safe(f'''
+        from(bucket: "{bucket}")
+          |> range(start: -24h)
+          |> filter(fn: (r) => r._measurement == "sensor_battery"
+              and r.tank_id == "{tank_id}")
+          |> last()
+    ''')
+    if not rows:
+        return {"battery_pct": None, "last_seen_min": None}
+    rec = rows[0]
+    battery_pct = rec.get("_value")
+    last_seen_ts = rec.get("time")
+    last_seen_min = None
+    if last_seen_ts and hasattr(last_seen_ts, "timestamp"):
+        now = datetime.datetime.now(datetime.timezone.utc)
+        last_seen_min = max(0, round((now.timestamp() - last_seen_ts.timestamp()) / 60))
+    return {"battery_pct": battery_pct, "last_seen_min": last_seen_min}
+
+
+def daily_consumption_history(days: int = 90) -> list[dict]:
+    """Combined daily consumption (L/day) across all tanks for the heatmap."""
+    bucket = influx_bucket()
+    if not bucket:
+        return []
+    rows = flux_query_safe(f'''
+        from(bucket: "{bucket}")
+          |> range(start: -{days}d)
+          |> filter(fn: (r) => r._measurement == "water_tank"
+              and r._field == "volume_liters")
+          |> aggregateWindow(every: 1d, fn: last, createEmpty: false)
+          |> difference(nonNegative: false)
+          |> map(fn: (r) => ({{ r with _value: -r._value }}))
+          |> filter(fn: (r) => r._value > 0)
+          |> group(columns: ["_time"])
+          |> sum()
+          |> sort(columns: ["_time"])
+    ''')
+    result = []
+    for r in rows:
+        t = r.get("time") or r.get("_time")
+        if t:
+            date_str = t.strftime("%Y-%m-%d") if hasattr(t, "strftime") else str(t)[:10]
+            result.append({"date": date_str, "liters": round(r.get("_value", 0))})
+    return result
+
+
 # ------------------------------------------------------------------
 # Routes
 # ------------------------------------------------------------------
 
 @app.route("/")
 def index():
-    tanks = load_tanks()
-    tank_data = []
-    for t in tanks:
-        reading = latest_reading(t["id"])
-        rate = rolling_rate_lph(t["id"])
-        days_left = None
-        if reading and rate and rate > 0:
-            days_left = round(reading.get("volume_liters", 0) / (rate * 24), 1)
-        tank_data.append({
-            "cfg": t,
-            "reading": reading,
-            "rate_lph": rate,
-            "days_left": days_left,
-        })
-    return render_template("index.html", tanks=tank_data)
+    return render_template("index.html")
 
 
 @app.route("/api/tanks")
@@ -130,6 +279,10 @@ def api_tanks():
             "reading": reading,
             "rate_lph": rate,
             "days_left": days_left,
+            "today_consumption_l": today_consumption_l(t["id"]),
+            "avg_consumption_l": avg_daily_consumption_l(t["id"]),
+            "pump": pump_status(t),
+            "sensor": sensor_status(t["id"]),
         })
     return jsonify(out)
 
@@ -138,6 +291,12 @@ def api_tanks():
 def api_history(tank_id: str):
     days = int(request.args.get("days", 7))
     return jsonify(level_history(tank_id, days))
+
+
+@app.route("/api/consumption")
+def api_consumption():
+    days = int(request.args.get("days", 90))
+    return jsonify(daily_consumption_history(days))
 
 
 @app.route("/api/source/<tank_id>", methods=["POST"])
@@ -154,8 +313,6 @@ def set_source(tank_id: str):
     if source not in tank.get("sources", []):
         return jsonify({"error": f"invalid source '{source}'"}), 400
 
-    # Patch active_source in the YAML file
-    import re
     new_text = re.sub(
         r"(active_source:\s*)\S+",
         f"\\g<1>{source}",

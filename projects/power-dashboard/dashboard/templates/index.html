@@ -1,301 +1,2036 @@
-<!DOCTYPE html>
-<html lang="en">
+{% raw %}<!DOCTYPE html>
+<html lang="en" data-vibe="calm" data-theme="light">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Power Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Power Dashboard — Home Automation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
-    :root {
-      --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3e;
-      --text: #e2e8f0; --muted: #8892a4;
-      --green: #22c55e; --red: #ef4444; --blue: #3b82f6;
-      --yellow: #eab308; --orange: #f97316; --purple: #a855f7;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
+/* ============================================================
+   Water Monitor — Stylesheet
+   Three vibes (calm | industrial | soft) × Two themes (light | dark)
+   ============================================================ */
 
-    header {
-      background: var(--surface); border-bottom: 1px solid var(--border);
-      padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between;
-    }
-    header h1 { font-size: 1.2rem; font-weight: 700; color: var(--yellow); }
-    nav a { color: var(--muted); text-decoration: none; font-size: 0.85rem; margin-left: 1.2rem; }
-    nav a:hover { color: var(--text); }
-    nav a.cta {
-      background: var(--blue); color: #fff; padding: 0.4rem 0.9rem;
-      border-radius: 6px; font-weight: 600;
-    }
+/* ---------- THEME TOKENS ---------- */
 
-    main { max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem; }
+/* Calm minimal — default */
+:root,
+[data-vibe="calm"][data-theme="light"] {
+  --bg:        oklch(0.985 0.005 240);
+  --surface:   oklch(1 0 0);
+  --surface-2: oklch(0.965 0.006 240);
+  --surface-3: oklch(0.94 0.008 240);
+  --border:    oklch(0.91 0.01 240);
+  --border-2:  oklch(0.86 0.012 240);
+  --text:      oklch(0.22 0.015 240);
+  --text-2:    oklch(0.46 0.012 240);
+  --muted:     oklch(0.62 0.012 240);
 
-    /* Stat cards */
-    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem 1.4rem; }
-    .stat-card .label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4rem; }
-    .stat-card .value { font-size: 2rem; font-weight: 700; line-height: 1; }
-    .stat-card .sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.35rem; }
-    .stat-card.yellow .value { color: var(--yellow); }
-    .stat-card.green .value  { color: var(--green); }
-    .stat-card.red .value    { color: var(--red); }
-    .stat-card.blue .value   { color: var(--blue); }
-    .stat-card.orange .value { color: var(--orange); }
+  --accent:    oklch(0.62 0.14 220);
+  --accent-2:  oklch(0.7 0.12 220);
+  --warn:      oklch(0.78 0.16 80);
+  --danger:    oklch(0.62 0.21 25);
+  --ok:        oklch(0.7 0.16 155);
 
-    /* Days remaining pill */
-    #days-pill {
-      display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 2px 8px;
-      border-radius: 20px; margin-top: 0.3rem;
-    }
-    #days-pill.ok { background: rgba(34,197,94,0.15); color: var(--green); }
-    #days-pill.warn { background: rgba(234,179,8,0.15); color: var(--yellow); }
-    #days-pill.danger { background: rgba(239,68,68,0.15); color: var(--red); }
+  --radius:    16px;
+  --radius-sm: 10px;
+  --radius-xs: 6px;
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.04), 0 0 0 1px oklch(0 0 0 / 0.04);
+  --shadow:    0 4px 24px -8px oklch(0 0 0 / 0.08), 0 0 0 1px oklch(0 0 0 / 0.04);
 
-    .row { display: grid; gap: 1rem; margin-bottom: 1rem; }
-    .row.col-2 { grid-template-columns: 1fr 1fr; }
-    .row.col-3 { grid-template-columns: 2fr 1fr 1fr; }
+  --font-ui:   "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: "Inter", system-ui, sans-serif;
 
-    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; }
-    .panel h2 { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem; }
+  --tracking-eyebrow: 0.08em;
+  --pad-card: 28px;
+}
 
-    canvas { width: 100% !important; }
+[data-vibe="calm"][data-theme="dark"] {
+  --bg:        oklch(0.16 0.012 240);
+  --surface:   oklch(0.21 0.014 240);
+  --surface-2: oklch(0.245 0.016 240);
+  --surface-3: oklch(0.28 0.018 240);
+  --border:    oklch(0.32 0.02 240);
+  --border-2:  oklch(0.4 0.022 240);
+  --text:      oklch(0.96 0.005 240);
+  --text-2:    oklch(0.78 0.012 240);
+  --muted:     oklch(0.6 0.018 240);
+}
 
-    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-    th { text-align: left; font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 0 0 0.5rem; border-bottom: 1px solid var(--border); }
-    td { padding: 0.45rem 0; border-bottom: 1px solid var(--border); }
-    tr:last-child td { border-bottom: none; }
-    .bar-bg { background: var(--border); border-radius: 3px; height: 6px; overflow: hidden; width: 80px; }
-    .bar-fill { height: 100%; border-radius: 3px; background: var(--yellow); }
+[data-vibe="industrial"][data-theme="dark"] {
+  --bg:        oklch(0.135 0.012 230);
+  --surface:   oklch(0.18 0.014 230);
+  --surface-2: oklch(0.22 0.016 230);
+  --surface-3: oklch(0.26 0.018 230);
+  --border:    oklch(0.3 0.022 230);
+  --border-2:  oklch(0.4 0.026 230);
+  --text:      oklch(0.95 0.012 200);
+  --text-2:    oklch(0.78 0.018 200);
+  --muted:     oklch(0.55 0.02 230);
 
-    .no-data { color: var(--muted); font-size: 0.85rem; padding: 1rem 0; }
+  --accent:    oklch(0.78 0.18 195);
+  --warn:      oklch(0.85 0.18 90);
+  --danger:    oklch(0.7 0.22 25);
+  --ok:        oklch(0.78 0.18 155);
 
-    .last-updated { font-size: 0.72rem; color: var(--muted); margin-bottom: 1.5rem; }
+  --radius:    4px;
+  --radius-sm: 2px;
+  --radius-xs: 0px;
 
-    @media (max-width: 900px) {
-      .row.col-2, .row.col-3 { grid-template-columns: 1fr; }
-      header { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
-    }
+  --font-ui:   "JetBrains Mono", ui-monospace, monospace;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-display: "JetBrains Mono", ui-monospace, monospace;
+  --tracking-eyebrow: 0.14em;
+  --pad-card: 22px;
+}
+
+[data-vibe="industrial"][data-theme="light"] {
+  --bg:        oklch(0.96 0.008 230);
+  --surface:   oklch(1 0 0);
+  --surface-2: oklch(0.94 0.008 230);
+  --surface-3: oklch(0.9 0.012 230);
+  --border:    oklch(0.84 0.014 230);
+  --border-2:  oklch(0.7 0.016 230);
+  --text:      oklch(0.18 0.014 230);
+  --text-2:    oklch(0.4 0.014 230);
+  --muted:     oklch(0.55 0.014 230);
+
+  --accent:    oklch(0.55 0.16 220);
+  --warn:      oklch(0.7 0.18 80);
+  --danger:    oklch(0.58 0.22 25);
+
+  --font-ui:   "JetBrains Mono", ui-monospace, monospace;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-display: "JetBrains Mono", ui-monospace, monospace;
+  --tracking-eyebrow: 0.14em;
+  --radius: 4px;
+  --radius-sm: 2px;
+  --radius-xs: 0px;
+}
+
+[data-vibe="soft"][data-theme="light"] {
+  --bg:        oklch(0.975 0.012 75);
+  --surface:   oklch(0.99 0.006 75);
+  --surface-2: oklch(0.955 0.014 75);
+  --surface-3: oklch(0.92 0.018 75);
+  --border:    oklch(0.9 0.015 75);
+  --border-2:  oklch(0.82 0.018 75);
+  --text:      oklch(0.25 0.022 60);
+  --text-2:    oklch(0.48 0.02 60);
+  --muted:     oklch(0.62 0.022 60);
+
+  --accent:    oklch(0.7 0.14 200);
+  --warn:      oklch(0.78 0.15 65);
+  --danger:    oklch(0.65 0.2 28);
+  --ok:        oklch(0.74 0.15 160);
+
+  --radius:    24px;
+  --radius-sm: 14px;
+  --radius-xs: 10px;
+  --pad-card: 32px;
+  --tracking-eyebrow: 0.06em;
+}
+
+[data-vibe="soft"][data-theme="dark"] {
+  --bg:        oklch(0.2 0.018 60);
+  --surface:   oklch(0.25 0.02 60);
+  --surface-2: oklch(0.29 0.022 60);
+  --surface-3: oklch(0.34 0.024 60);
+  --border:    oklch(0.36 0.024 60);
+  --border-2:  oklch(0.45 0.026 60);
+  --text:      oklch(0.96 0.014 60);
+  --text-2:    oklch(0.78 0.018 60);
+  --muted:     oklch(0.62 0.022 60);
+  --accent:    oklch(0.78 0.13 205);
+  --radius:    24px;
+  --radius-sm: 14px;
+  --radius-xs: 10px;
+}
+
+/* ---------- BASE ---------- */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text); }
+body {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  font-feature-settings: "ss01", "cv11";
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; cursor: pointer; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.app {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 28px 40px 64px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand-mark {
+  width: 38px; height: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: grid; place-items: center;
+  position: relative;
+  overflow: hidden;
+}
+.brand-mark::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 0%, transparent 45%, var(--accent) 45%, var(--accent) 100%);
+  opacity: 0.85;
+}
+.brand-mark::after {
+  content: "";
+  position: absolute; left: -50%; right: -50%; top: 42%;
+  height: 4px;
+  background: var(--surface);
+  border-radius: 50%;
+  filter: blur(0.5px);
+}
+.brand-title { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; }
+.brand-sub   { font-size: 11px; color: var(--muted); letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; }
+
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.live-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; color: var(--text-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: 999px;
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+.live-pill::before {
+  content: "";
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 0 currentColor;
+  animation: live-pulse 2s ease-out infinite;
+  color: var(--ok);
+}
+@keyframes live-pulse {
+  0% { box-shadow: 0 0 0 0 var(--ok); }
+  100% { box-shadow: 0 0 0 6px transparent; }
+}
+.icon-btn {
+  display: inline-grid; place-items: center;
+  width: 36px; height: 36px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+}
+.icon-btn:hover { color: var(--text); border-color: var(--border-2); }
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.summary-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.summary-tile .eyebrow {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+  color: var(--muted);
+  display: flex; align-items: center; gap: 8px;
+}
+.summary-tile .big {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.summary-tile .big small { font-size: 16px; color: var(--muted); margin-left: 4px; font-weight: 500; }
+.summary-tile .sub { font-size: 12px; color: var(--text-2); }
+
+.alert-banner {
+  background: color-mix(in oklch, var(--danger) 14%, var(--surface));
+  border: 1px solid color-mix(in oklch, var(--danger) 35%, var(--border));
+  border-radius: var(--radius);
+  padding: 16px 22px;
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 24px;
+  font-size: 13px;
+}
+.alert-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--danger);
+  box-shadow: 0 0 0 0 var(--danger);
+  animation: alert-pulse 1.6s ease-out infinite;
+  flex-shrink: 0;
+}
+@keyframes alert-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--danger) 60%, transparent); }
+  100% { box-shadow: 0 0 0 12px transparent; }
+}
+.alert-banner strong { font-weight: 600; }
+.alert-text { color: var(--text-2); flex: 1; }
+.alert-cta {
+  background: var(--danger);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: 12px; font-weight: 600;
+}
+.alert-cta:hover { filter: brightness(1.05); }
+
+.tanks-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.tank-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--pad-card);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .25s ease;
+}
+.tank-card.status-danger { border-color: color-mix(in oklch, var(--danger) 45%, var(--border)); }
+.tank-card.status-warn   { border-color: color-mix(in oklch, var(--warn) 35%, var(--border)); }
+
+.tank-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.tank-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 10px; letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-2);
+  font-weight: 600;
+}
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+.status-dot.status-warn   { background: var(--warn); }
+.status-dot.status-danger { background: var(--danger); }
+.tank-id { color: var(--muted); font-weight: 500; font-family: var(--font-mono); }
+
+.tank-name {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  margin-top: 6px;
+  letter-spacing: -0.01em;
+}
+.tank-cap { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: var(--font-mono); }
+
+.source-toggle { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.source-label {
+  font-size: 9px; text-transform: uppercase; letter-spacing: var(--tracking-eyebrow);
+  color: var(--muted);
+  font-weight: 600;
+}
+.source-pills {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+.source-pill {
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--text-2);
+  font-weight: 500;
+  transition: all .2s ease;
+}
+.source-pill.active { background: var(--accent); color: white; font-weight: 600; }
+.source-pill:not(.active):hover { color: var(--text); }
+
+.tank-body {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 28px;
+  align-items: stretch;
+}
+.density-compact .tank-body  { grid-template-columns: 160px 1fr; gap: 20px; }
+.density-spacious .tank-body { grid-template-columns: 240px 1fr; gap: 36px; }
+
+.tank-realistic {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 8px;
+  position: relative;
+}
+.tank-ticks { display: flex; flex-direction: column; justify-content: space-between; padding: 4px 0; }
+.tank-tick {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 9px; color: var(--muted);
+  font-family: var(--font-mono);
+}
+.tick-line { flex: 1; height: 1px; background: var(--border); }
+
+.tank-vessel {
+  position: relative;
+  background: linear-gradient(180deg, var(--surface-2) 0%, var(--surface-3) 100%);
+  border: 2px solid var(--border-2);
+  border-radius: var(--radius-xs) var(--radius-xs) calc(var(--radius-xs) + 2px) calc(var(--radius-xs) + 2px);
+  overflow: hidden;
+  box-shadow: inset 0 2px 8px oklch(0 0 0 / 0.06);
+}
+[data-theme="dark"] .tank-vessel { box-shadow: inset 0 2px 8px oklch(0 0 0 / 0.4); }
+
+.tank-glass {
+  position: absolute; inset: 0;
+  background: linear-gradient(105deg,
+    transparent 0%, transparent 35%,
+    color-mix(in oklch, white 15%, transparent) 38%,
+    color-mix(in oklch, white 15%, transparent) 42%,
+    transparent 45%, transparent 100%);
+  pointer-events: none;
+  z-index: 3;
+}
+[data-theme="dark"] .tank-glass {
+  background: linear-gradient(105deg,
+    transparent 0%, transparent 35%,
+    color-mix(in oklch, white 8%, transparent) 38%,
+    color-mix(in oklch, white 8%, transparent) 42%,
+    transparent 45%, transparent 100%);
+}
+
+.tank-water {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  transition: height 1.4s cubic-bezier(.4, 0, .2, 1);
+  z-index: 1;
+}
+.tank-water::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, color-mix(in oklch, white 12%, transparent) 0%, transparent 25%);
+  pointer-events: none;
+}
+.wave { position: absolute; left: -25%; right: -25%; width: 150%; height: 18px; top: -10px; }
+.wave-1 { animation: wave-slide 5s linear infinite; }
+.wave-2 { animation: wave-slide 7s linear infinite reverse; top: -7px; }
+@keyframes wave-slide { 0% { transform: translateX(0); } 100% { transform: translateX(25%); } }
+
+.bubble {
+  position: absolute; bottom: 0;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: color-mix(in oklch, white 50%, transparent);
+  animation: bubble-rise 4s ease-in infinite;
+}
+@keyframes bubble-rise {
+  0%   { bottom: 0; opacity: 0; transform: scale(0.5); }
+  20%  { opacity: 0.8; }
+  100% { bottom: 100%; opacity: 0; transform: scale(1.2); }
+}
+
+.tank-label {
+  position: absolute; left: 0; right: 0; top: 50%;
+  transform: translateY(-50%);
+  text-align: center; z-index: 4; pointer-events: none;
+  text-shadow: 0 1px 12px var(--surface);
+}
+.tank-pct {
+  font-family: var(--font-display);
+  font-size: 36px; font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.tank-pct span { font-size: 18px; color: var(--text-2); font-weight: 500; margin-left: 2px; }
+.tank-vol { font-family: var(--font-mono); font-size: 11px; color: var(--text-2); margin-top: 6px; letter-spacing: 0.02em; }
+.density-compact  .tank-pct { font-size: 28px; }
+.density-spacious .tank-pct { font-size: 44px; }
+
+.tank-sensor {
+  position: absolute; top: 6px; left: 50%;
+  transform: translateX(-50%);
+  width: 14px; height: 6px;
+  background: var(--surface-3); border-radius: 2px;
+  z-index: 4; display: grid; place-items: center;
+}
+.sensor-pulse {
+  position: absolute; width: 4px; height: 4px; border-radius: 50%;
+  background: var(--accent);
+  animation: sensor-blink 2.4s ease-in-out infinite;
+}
+@keyframes sensor-blink { 0%, 90%, 100% { opacity: 0.3; } 45% { opacity: 1; } }
+
+.tank-dial-wrap { display: grid; place-items: center; }
+.tank-dial { width: 100%; height: 100%; max-width: 280px; }
+.dial-pct { font-family: var(--font-display); font-size: 36px; font-weight: 700; fill: var(--text); font-variant-numeric: tabular-nums; }
+.dial-vol { font-family: var(--font-mono); font-size: 12px; fill: var(--muted); }
+
+.tank-bar-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: center; }
+.tank-bar {
+  position: relative;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  height: 100%; overflow: hidden;
+}
+.tank-bar-fill { position: absolute; bottom: 0; left: 0; right: 0; transition: height 1.2s ease; }
+.bar-grid { position: absolute; left: 0; right: 0; height: 1px; background: var(--border); opacity: 0.5; }
+.tank-bar-label { text-align: left; }
+.tank-bar-label .tank-pct { font-size: 44px; }
+
+.tank-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-content: start;
+}
+.stat {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.stat-label {
+  font-size: 10px; text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+  color: var(--muted); font-weight: 600;
+}
+.stat-value {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  display: flex; align-items: baseline; gap: 4px;
+  margin-top: 2px;
+}
+.stat-num { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+.stat-unit { font-size: 12px; color: var(--muted); font-weight: 500; }
+.stat-sub { font-size: 10.5px; color: var(--text-2); display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); }
+.trend { font-weight: 600; font-size: 10px; }
+.trend-up   { color: var(--warn); }
+.trend-down { color: var(--ok); }
+
+.tank-foot {
+  border-top: 1px dashed var(--border);
+  padding-top: 16px;
+  display: flex; flex-direction: column; gap: 6px;
+  font-size: 11.5px; color: var(--text-2); font-family: var(--font-mono);
+}
+.foot-row { display: flex; justify-content: space-between; align-items: center; }
+.pump-state { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
+.pump-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.pump-state.on { color: var(--ok); }
+.pump-state.on .pump-dot { background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: live-pulse 1.8s ease-out infinite; }
+.foot-meta { color: var(--muted); }
+.sensor-meta { font-feature-settings: "tnum"; }
+
+.heatmap-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--pad-card);
+}
+.heatmap-head {
+  display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;
+  flex-wrap: wrap; gap: 12px;
+}
+.heatmap-head h3 { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+.heatmap-head .sub { font-size: 12px; color: var(--muted); margin-top: 2px; font-family: var(--font-mono); }
+.heatmap-totals { display: flex; gap: 28px; font-family: var(--font-mono); font-size: 11px; color: var(--text-2); }
+.heatmap-totals strong { display: block; font-family: var(--font-display); font-size: 22px; color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.heatmap { position: relative; }
+.heatmap-months { position: relative; height: 14px; margin-left: 24px; margin-bottom: 4px; }
+.hm-month { position: absolute; font-size: 10px; color: var(--muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: var(--tracking-eyebrow); }
+.heatmap-body { display: flex; gap: 6px; }
+.heatmap-days { position: relative; width: 18px; height: calc(7 * 16px); }
+.hm-day { position: absolute; font-size: 9px; color: var(--muted); font-family: var(--font-mono); }
+.heatmap-grid { display: flex; gap: 3px; flex: 1; overflow-x: auto; padding-bottom: 4px; }
+.hm-week { display: flex; flex-direction: column; gap: 3px; }
+.hm-cell { width: 13px; height: 13px; border-radius: 3px; background: var(--surface-2); cursor: pointer; transition: transform .12s ease; }
+.hm-cell:hover { transform: scale(1.4); outline: 1px solid var(--text); }
+.hm-empty { background: transparent; cursor: default; }
+.hm-empty:hover { transform: none; outline: none; }
+
+.heatmap-legend { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); font-family: var(--font-mono); margin-top: 14px; }
+.hm-legend-cell { width: 12px; height: 12px; border-radius: 3px; }
+.hm-max { margin-left: auto; }
+
+.bottom-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+.system-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--pad-card);
+  display: flex; flex-direction: column; gap: 18px;
+}
+.system-panel h3 { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+.system-rows { display: flex; flex-direction: column; gap: 12px; }
+.system-row {
+  display: grid; grid-template-columns: 1fr auto; gap: 12px;
+  align-items: center; padding: 12px 14px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.system-row .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: var(--tracking-eyebrow); font-weight: 600; }
+.system-row .val { font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.system-row .pill {
+  font-size: 10px; padding: 3px 10px; border-radius: 999px;
+  background: var(--surface-3); color: var(--text-2);
+  font-family: var(--font-mono); text-transform: uppercase; letter-spacing: var(--tracking-eyebrow);
+}
+.system-row .pill.ok   { background: color-mix(in oklch, var(--ok) 18%, var(--surface-2)); color: var(--ok); }
+.system-row .pill.warn { background: color-mix(in oklch, var(--warn) 18%, var(--surface-2)); color: var(--warn); }
+
+/* ============================================================
+   POWER DASHBOARD additions
+   ============================================================ */
+.power-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.meter-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--pad-card);
+  display: flex; flex-direction: column; gap: 24px;
+  position: relative; overflow: hidden;
+  transition: border-color .25s ease;
+}
+.meter-card.status-danger { border-color: color-mix(in oklch, var(--danger) 45%, var(--border)); }
+.meter-card.status-warn   { border-color: color-mix(in oklch, var(--warn) 35%, var(--border)); }
+
+.meter-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.meter-name { font-family: var(--font-display); font-size: 22px; font-weight: 600; margin-top: 6px; letter-spacing: -0.01em; }
+.meter-cap { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: var(--font-mono); }
+
+.meter-body {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 28px;
+  align-items: stretch;
+}
+.density-compact .meter-body  { grid-template-columns: 160px 1fr; gap: 20px; }
+.density-spacious .meter-body { grid-template-columns: 240px 1fr; gap: 36px; }
+
+.credit-gauge { display: grid; grid-template-columns: 32px 1fr; gap: 8px; position: relative; }
+.gauge-vessel {
+  position: relative;
+  background: linear-gradient(180deg, var(--surface-2) 0%, var(--surface-3) 100%);
+  border: 2px solid var(--border-2);
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+  box-shadow: inset 0 2px 8px oklch(0 0 0 / 0.06);
+}
+[data-theme="dark"] .gauge-vessel { box-shadow: inset 0 2px 8px oklch(0 0 0 / 0.4); }
+.gauge-fill {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  transition: height 1.4s cubic-bezier(.4, 0, .2, 1);
+  z-index: 1;
+}
+.gauge-fill::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, color-mix(in oklch, white 14%, transparent) 0%, transparent 30%);
+  pointer-events: none;
+}
+.gauge-flow {
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(0deg,
+    transparent 0px, transparent 8px,
+    color-mix(in oklch, white 22%, transparent) 8px,
+    color-mix(in oklch, white 22%, transparent) 9px
+  );
+  animation: flow-scroll 3s linear infinite;
+  pointer-events: none;
+  opacity: 0.6;
+}
+@keyframes flow-scroll { 0% { background-position: 0 0; } 100% { background-position: 0 -16px; } }
+.gauge-label {
+  position: absolute; left: 0; right: 0; top: 50%;
+  transform: translateY(-50%);
+  text-align: center; z-index: 4; pointer-events: none;
+  text-shadow: 0 1px 12px var(--surface);
+}
+.gauge-pct { font-family: var(--font-display); font-size: 36px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1; }
+.gauge-pct span { font-size: 18px; color: var(--text-2); font-weight: 500; margin-left: 2px; }
+.gauge-vol { font-family: var(--font-mono); font-size: 11px; color: var(--text-2); margin-top: 6px; letter-spacing: 0.02em; }
+.density-compact  .gauge-pct { font-size: 28px; }
+.density-spacious .gauge-pct { font-size: 44px; }
+
+.gauge-bolt {
+  position: absolute; top: -10px; left: 50%;
+  transform: translateX(-50%);
+  width: 22px; height: 22px;
+  background: var(--surface); border: 1px solid var(--border-2); border-radius: 50%;
+  z-index: 4; display: grid; place-items: center;
+  color: var(--accent);
+}
+
+.gauge-dial-wrap { display: grid; place-items: center; }
+.gauge-dial { width: 100%; height: 100%; max-width: 280px; }
+
+.gauge-ticks { display: flex; flex-direction: column; justify-content: space-between; padding: 4px 0; }
+.gauge-tick { display: flex; align-items: center; gap: 4px; font-size: 9px; color: var(--muted); font-family: var(--font-mono); }
+
+.load-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--pad-card);
+  display: flex; flex-direction: column; gap: 20px;
+  position: relative; overflow: hidden;
+}
+.load-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.load-now { display: flex; align-items: baseline; gap: 8px; margin-top: 6px; }
+.load-now-num { font-family: var(--font-display); font-size: 56px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--accent); }
+.density-compact  .load-now-num { font-size: 44px; }
+.density-spacious .load-now-num { font-size: 68px; }
+.load-now-unit { font-family: var(--font-mono); font-size: 16px; color: var(--muted); font-weight: 500; }
+.load-sub { font-size: 12px; color: var(--text-2); font-family: var(--font-mono); display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.load-pulse-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 0 var(--accent);
+  animation: live-pulse 1.4s ease-out infinite;
+  color: var(--accent);
+}
+
+.load-chart-wrap { position: relative; height: 160px; margin: 0 -8px; }
+.density-compact  .load-chart-wrap { height: 130px; }
+.density-spacious .load-chart-wrap { height: 200px; }
+.load-chart-svg { width: 100%; height: 100%; display: block; }
+.load-chart-grid line { stroke: var(--border); stroke-dasharray: 2 4; opacity: 0.6; }
+.load-chart-axis { font-family: var(--font-mono); font-size: 9px; fill: var(--muted); }
+
+.active-appliances { display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px dashed var(--border); padding-top: 14px; }
+.appl-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; color: var(--text-2); font-family: var(--font-mono); }
+.appl-pill .appl-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: live-pulse 2s ease-out infinite; color: var(--ok); }
+.appl-pill strong { color: var(--text); font-family: var(--font-display); font-weight: 600; }
+
+.appliances-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--pad-card); display: flex; flex-direction: column; gap: 18px; }
+.appliances-head { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+.appliances-head h3 { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+.appliances-head .sub { font-size: 12px; color: var(--muted); margin-top: 2px; font-family: var(--font-mono); }
+.appl-table { display: flex; flex-direction: column; gap: 0; }
+.appl-row {
+  display: grid;
+  grid-template-columns: 14px minmax(140px, 1.6fr) 1fr 80px 110px;
+  gap: 14px; align-items: center;
+  padding: 10px 0; border-bottom: 1px dashed var(--border); font-size: 13px;
+}
+.appl-row:last-child { border-bottom: none; }
+.appl-row .row-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-2); }
+.appl-row .row-dot.on { background: var(--ok); box-shadow: 0 0 0 0 var(--ok); animation: live-pulse 2s ease-out infinite; }
+.appl-row .a-name { font-weight: 500; }
+.appl-row .a-room { color: var(--muted); font-size: 12px; }
+.appl-row .a-kwh { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; font-weight: 500; }
+.appl-row .a-bar { position: relative; background: var(--surface-2); height: 6px; border-radius: 3px; overflow: hidden; }
+.appl-row .a-bar-fill { position: absolute; inset: 0; background: var(--accent); transform-origin: left; border-radius: 3px; }
+
+.appl-tabs { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px; gap: 2px; }
+.appl-tab { font-size: 11px; padding: 5px 12px; border-radius: 999px; border: none; background: transparent; color: var(--text-2); font-weight: 500; transition: all .2s ease; }
+.appl-tab.active { background: var(--accent); color: white; font-weight: 600; }
+.appl-tab:not(.active):hover { color: var(--text); }
+
+.topup-list { display: flex; flex-direction: column; gap: 8px; }
+.topup-row {
+  display: grid; grid-template-columns: 1fr auto auto !important;
+  gap: 14px; align-items: center;
+  padding: 10px 12px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 12px; font-family: var(--font-mono);
+}
+.topup-row .t-date { color: var(--text-2); }
+.topup-row .t-kwh { font-family: var(--font-display); font-weight: 600; font-size: 14px; color: var(--text); }
+.t-cost-block { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; font-family: var(--font-mono); }
+.t-cost-num { font-size: 12px; color: var(--text-2); font-weight: 500; }
+.t-cost-eff { font-size: 10.5px; color: var(--muted); }
+
+.cost-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 24px;
+  display: flex; flex-direction: column; gap: 18px;
+  position: relative;
+}
+.cost-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.cost-head h3 { font-family: var(--font-display); font-size: 18px; font-weight: 600; margin: 0 0 2px; color: var(--text); }
+.cost-head .sub { font-size: 12px; color: var(--muted); }
+.tariff-refresh {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  color: var(--text-2); font-family: var(--font-ui); font-size: 12px; font-weight: 500;
+  padding: 8px 12px; border-radius: 999px; cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.tariff-refresh:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.tariff-refresh:disabled { opacity: .7; cursor: progress; }
+.tariff-refresh.spinning svg { animation: tariff-spin .9s linear infinite; }
+@keyframes tariff-spin { to { transform: rotate(360deg); } }
+
+.cost-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.cost-tile {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;
+}
+.cost-tile-projected { background: color-mix(in oklch, var(--accent) 8%, var(--surface)); border-width: 1px; border-style: solid; }
+.cost-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.cost-num { font-family: var(--font-display); font-size: 26px; font-weight: 600; color: var(--text); letter-spacing: -.01em; }
+.cost-num small { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 4px; letter-spacing: .02em; }
+.cost-sub { font-size: 11.5px; color: var(--text-2); font-family: var(--font-mono); }
+
+.tier-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; border-top: 1px dashed var(--border); padding-top: 16px; }
+.tier-block { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-xs); opacity: .65; transition: opacity .15s, border-color .15s; }
+.tier-active { opacity: 1; border-color: var(--accent); background: color-mix(in oklch, var(--accent) 6%, var(--surface)); }
+.tier-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.tier-label { font-size: 11.5px; color: var(--text-2); font-weight: 500; }
+.tier-rate { font-size: 12px; color: var(--text); font-weight: 600; }
+.tier-bar { height: 4px; background: var(--surface); border-radius: 2px; overflow: hidden; }
+.tier-bar-fill { height: 100%; transition: width .3s ease; }
+
+.tariff-meta { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 11.5px; color: var(--muted); font-family: var(--font-mono); }
+.tariff-fetched.stale { color: var(--danger); }
+
+.tariff-flash {
+  position: absolute; top: 16px; right: 16px;
+  padding: 8px 14px; border-radius: 999px;
+  font-size: 12px; font-weight: 500;
+  animation: flash-in .25s ease;
+}
+.tariff-flash-ok { background: color-mix(in oklch, var(--ok, #16a34a) 18%, var(--surface)); color: var(--ok, #16a34a); border: 1px solid color-mix(in oklch, var(--ok, #16a34a) 40%, transparent); }
+.tariff-flash-err { background: color-mix(in oklch, var(--danger) 18%, var(--surface)); color: var(--danger); border: 1px solid color-mix(in oklch, var(--danger) 40%, transparent); }
+@keyframes flash-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+.heatmap-controls { display: flex; align-items: center; gap: 14px; }
+.unit-toggle { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 2px; }
+.unit-tab { padding: 5px 12px; font-size: 11.5px; font-weight: 500; font-family: var(--font-ui); background: transparent; border: none; color: var(--muted); border-radius: 999px; cursor: pointer; transition: background .15s, color .15s; }
+.unit-tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.unit-tab:hover:not(.active) { color: var(--text-2); }
+
+@media (max-width: 1100px) {
+  .tanks-grid, .power-grid { grid-template-columns: 1fr; }
+  .summary { grid-template-columns: 1fr 1fr; }
+  .bottom-grid { grid-template-columns: 1fr; }
+  .cost-tiles { grid-template-columns: 1fr 1fr !important; }
+  .tier-strip { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 720px) {
+  .app { padding: 16px 16px 48px; }
+  .summary { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .summary-tile { padding: 14px 16px; }
+  .summary-tile .big { font-size: 24px; }
+  .tank-body, .meter-body { grid-template-columns: 1fr; gap: 20px; }
+  .tank-realistic, .credit-gauge { max-width: 220px; margin: 0 auto; height: 240px !important; }
+  .tank-stats { grid-template-columns: 1fr 1fr; }
+  .tank-head, .meter-head, .load-head { flex-direction: column; align-items: stretch; gap: 14px; }
+  .source-toggle { align-items: flex-start; }
+  .tank-name, .meter-name { font-size: 19px; }
+  .tank-card, .meter-card, .load-card { padding: 20px; }
+  .heatmap-card, .system-panel, .appliances-card { padding: 20px; }
+  .topbar { flex-wrap: wrap; gap: 12px; }
+  .load-now-num { font-size: 40px; }
+  .appl-row { grid-template-columns: 12px 1fr 60px; gap: 10px; }
+  .appl-row .a-room, .appl-row .a-bar { display: none; }
+  .cost-head { flex-direction: column; align-items: stretch; gap: 12px; }
+}
+
+/* Loading spinner */
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- Tweaks panel ---- */
+.twk-panel {
+  position: fixed; bottom: 24px; right: 24px; z-index: 900;
+  font-family: var(--font-ui); font-size: 13px;
+}
+.twk-fab {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text-2); display: grid; place-items: center;
+  box-shadow: var(--shadow); cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.twk-fab:hover { border-color: var(--accent); color: var(--accent); }
+.twk-drawer {
+  position: absolute; bottom: 52px; right: 0;
+  width: 280px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 16px; display: flex; flex-direction: column; gap: 14px;
+  max-height: 80vh; overflow-y: auto;
+}
+.twk-title { font-weight: 600; font-size: 13px; color: var(--text); padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.twk-sect { font-size: 10px; text-transform: uppercase; letter-spacing: var(--tracking-eyebrow); color: var(--muted); font-weight: 600; margin-top: 4px; }
+.twk-row { display: flex; flex-direction: column; gap: 6px; }
+.twk-label { font-size: 11px; color: var(--text-2); }
+.twk-radios { display: flex; flex-wrap: wrap; gap: 4px; }
+.twk-radio-btn {
+  font-size: 11px; padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text-2); cursor: pointer; transition: all .15s;
+}
+.twk-radio-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+.twk-radio-btn:not(.active):hover { border-color: var(--border-2); color: var(--text); }
+.twk-select {
+  width: 100%; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-xs); color: var(--text); font-family: var(--font-ui);
+  font-size: 12px; padding: 6px 10px; outline: none; cursor: pointer;
+}
+.twk-select:focus { border-color: var(--accent); }
+.twk-color { display: flex; align-items: center; gap: 8px; }
+.twk-color input[type="color"] { width: 28px; height: 28px; border: none; border-radius: 50%; cursor: pointer; padding: 0; background: none; }
+.twk-color-hex { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.twk-toggle-row { display: flex; align-items: center; justify-content: space-between; }
+.twk-toggle {
+  width: 32px; height: 18px; border-radius: 999px;
+  background: var(--surface-3); border: 1px solid var(--border);
+  position: relative; cursor: pointer; transition: background .2s;
+}
+.twk-toggle.on { background: var(--accent); border-color: var(--accent); }
+.twk-toggle-knob {
+  position: absolute; top: 2px; left: 2px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: white; transition: transform .2s;
+}
+.twk-toggle.on .twk-toggle-knob { transform: translateX(14px); }
   </style>
 </head>
 <body>
-<header>
-  <h1>&#9889; Power Dashboard</h1>
-  <nav>
-    <a href="/appliances">Appliances</a>
-    <a href="/entry" class="cta">+ Log Reading</a>
-  </nav>
-</header>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
-<main>
-  <p class="last-updated" id="last-updated">Loading&hellip;</p>
+  <!-- tariff.js — plain script, no babel -->
+  <script>
+window.REG_TARIFF = {
+  fetched_at: "2026-04-30T08:14:00Z",
+  source: "Estimated from REG 2025–2026 schedule · residential prepaid · VAT-excl.",
+  currency: "RWF",
+  tiers: [
+    { up_to: 20,       rate: 89,  label: "Lifeline (0–20 kWh)" },
+    { up_to: 50,       rate: 310, label: "Block 2 (21–50 kWh)" },
+    { up_to: Infinity, rate: 369, label: "High usage (51+ kWh)" },
+  ],
+};
 
-  <!-- Stat cards -->
-  <div class="stat-grid">
-    <div class="stat-card yellow">
-      <div class="label">Remaining Credit</div>
-      <div class="value" id="stat-remaining">—</div>
-      <div class="sub">kWh on meter</div>
-    </div>
-    <div class="stat-card" id="days-card">
-      <div class="label">Est. Days Remaining</div>
-      <div class="value" id="stat-days">—</div>
-      <div class="sub"><span id="days-pill" class="ok"></span></div>
-    </div>
-    <div class="stat-card blue">
-      <div class="label">Instant Load</div>
-      <div class="value" id="stat-load">—</div>
-      <div class="sub">Watts at last reading</div>
-    </div>
-    <div class="stat-card orange">
-      <div class="label">Daily Usage Rate</div>
-      <div class="value" id="stat-rate">—</div>
-      <div class="sub">kWh/day (7-day avg)</div>
-    </div>
-    <div class="stat-card green">
-      <div class="label">Lifetime Total</div>
-      <div class="value" id="stat-lifetime">—</div>
-      <div class="sub">kWh all-time</div>
-    </div>
-  </div>
+window.tariffCostFor = function (kWh, monthSoFar = 0, tariff = window.REG_TARIFF) {
+  let remaining = kWh, pos = monthSoFar, cost = 0;
+  for (const tier of tariff.tiers) {
+    if (remaining <= 0) break;
+    if (pos >= tier.up_to) continue;
+    const room = tier.up_to - pos;
+    const draw = Math.min(remaining, room);
+    cost += draw * tier.rate;
+    remaining -= draw;
+    pos += draw;
+  }
+  return cost;
+};
 
-  <!-- Charts -->
-  <div class="row col-2">
-    <div class="panel">
-      <h2>Remaining Credit (kWh) — 30 days</h2>
-      <canvas id="remaining-chart" height="130"></canvas>
-    </div>
-    <div class="panel">
-      <h2>Instant Load (W) — 7 days</h2>
-      <canvas id="load-chart" height="130"></canvas>
-    </div>
-  </div>
+window.tariffEffectiveRate = function (kWh, monthSoFar = 0, tariff = window.REG_TARIFF) {
+  if (kWh <= 0) return tariff.tiers[0].rate;
+  return window.tariffCostFor(kWh, monthSoFar, tariff) / kWh;
+};
 
-  <!-- Appliance breakdown -->
-  <div class="row col-3">
-    <div class="panel">
-      <h2>Estimated Daily Usage by Appliance</h2>
-      <table id="appliance-table">
-        <thead><tr><th>Appliance</th><th>Room</th><th>kWh/day</th><th></th></tr></thead>
-        <tbody><tr><td colspan="4" class="no-data">No appliance data yet. <a href="/appliances" style="color:var(--blue)">Log readings →</a></td></tr></tbody>
-      </table>
-    </div>
-    <div class="panel" style="grid-column: span 2;">
-      <h2>Usage by Room</h2>
-      <canvas id="room-chart" height="160"></canvas>
-    </div>
-  </div>
-</main>
-
-<script>
-  let remainingChart, loadChart, roomChart;
-  const COLORS = ['#eab308','#3b82f6','#22c55e','#f97316','#a855f7','#ef4444','#06b6d4','#ec4899'];
-
-  function fmt(v, dec=1) { return v == null ? '—' : Number(v).toFixed(dec); }
-
-  async function loadSummary() {
-    const d = await fetch('/api/summary').then(r => r.json());
-    const r = d.reading || {};
-
-    document.getElementById('stat-remaining').textContent = fmt(r.remaining_kwh);
-    document.getElementById('stat-load').textContent = r.instant_load_w != null ? Math.round(r.instant_load_w) : '—';
-    document.getElementById('stat-rate').textContent = d.rate_kwh_per_day != null ? fmt(d.rate_kwh_per_day) : '—';
-    document.getElementById('stat-lifetime').textContent = fmt(r.lifetime_kwh, 1);
-
-    const days = d.days_left;
-    document.getElementById('stat-days').textContent = days != null ? fmt(days, 1) : '—';
-    const pill = document.getElementById('days-pill');
-    if (days != null) {
-      if (days > 7) { pill.textContent = 'OK'; pill.className = 'ok'; }
-      else if (days > 3) { pill.textContent = 'Low'; pill.className = 'warn'; }
-      else { pill.textContent = 'Critical'; pill.className = 'danger'; }
-    }
-
-    if (r.time) {
-      const t = new Date(r.time);
-      document.getElementById('last-updated').textContent =
-        'Last reading: ' + t.toLocaleString();
+window.tariffBreakdown = function (kWh, monthSoFar = 0, tariff = window.REG_TARIFF) {
+  let remaining = kWh, pos = monthSoFar;
+  const out = [];
+  for (const tier of tariff.tiers) {
+    if (remaining <= 0) break;
+    if (pos >= tier.up_to) continue;
+    const room = tier.up_to - pos;
+    const draw = Math.min(remaining, room);
+    if (draw > 0) {
+      out.push({ tier, kwh: draw, cost: draw * tier.rate });
+      remaining -= draw;
+      pos += draw;
     }
   }
+  return out;
+};
 
-  async function loadRemainingChart() {
-    const data = await fetch('/api/history/remaining').then(r => r.json());
-    if (!data.length) return;
-    const labels = data.map(d => {
-      const t = new Date(d.time);
-      return (t.getMonth()+1)+'/'+t.getDate();
+/* BUG FIX: default changed from window.MOCK_DAILY to [] */
+window.kwhMonthToDate = function (dateISO, daily = [], tariff = window.REG_TARIFF) {
+  const target = new Date(dateISO);
+  const y = target.getFullYear(), m = target.getMonth();
+  return daily
+    .filter(d => {
+      const dt = new Date(d.date);
+      return dt.getFullYear() === y && dt.getMonth() === m && dt < target;
+    })
+    .reduce((s, d) => s + d.kwh, 0);
+};
+
+window.refreshTariffFromREG = async function () {
+  await new Promise(r => setTimeout(r, 1100));
+  const jitter = (Math.random() < 0.5) ? 0 : 4;
+  const fresh = {
+    fetched_at: new Date().toISOString(),
+    source: "REG 2025–2026 schedule \xb7 residential prepaid \xb7 VAT-excl.",
+    currency: "RWF",
+    tiers: [
+      { up_to: 20,       rate: 89,  label: "Lifeline (0–20 kWh)" },
+      { up_to: 50,       rate: 310, label: "Block 2 (21–50 kWh)" },
+      { up_to: Infinity, rate: 369 + jitter, label: "High usage (51+ kWh)" },
+    ],
+  };
+  window.REG_TARIFF = fresh;
+  return fresh;
+};
+  </script>
+
+  <!-- tweaks-panel.jsx -->
+  <script type="text/babel">
+const { useState: useStateTwk, useRef: useRefTwk, useEffect: useEffectTwk } = React;
+
+function useTweaks(defaults) {
+  const [tweaks, setTweaks] = useStateTwk(() => {
+    try {
+      const saved = localStorage.getItem("pd-tweaks");
+      return saved ? { ...defaults, ...JSON.parse(saved) } : { ...defaults };
+    } catch { return { ...defaults }; }
+  });
+  const setTweak = (key, val) => {
+    setTweaks(prev => {
+      const next = { ...prev, [key]: val };
+      try { localStorage.setItem("pd-tweaks", JSON.stringify(next)); } catch {}
+      return next;
     });
-    const values = data.map(d => d.value);
+  };
+  return [tweaks, setTweak];
+}
 
-    if (!remainingChart) {
-      const ctx = document.getElementById('remaining-chart').getContext('2d');
-      remainingChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [{ label: 'Remaining kWh', data: values, borderColor: '#eab308', backgroundColor: 'rgba(234,179,8,0.1)', tension: 0.3, pointRadius: 3, fill: true }]
-        },
-        options: {
-          responsive: true, animation: false,
-          scales: {
-            x: { ticks: { color: '#8892a4', maxTicksLimit: 10 }, grid: { color: '#2a2d3e' } },
-            y: { ticks: { color: '#8892a4' }, grid: { color: '#2a2d3e' }, beginAtZero: true }
-          },
-          plugins: { legend: { display: false } }
-        }
-      });
-    } else {
-      remainingChart.data.labels = labels;
-      remainingChart.data.datasets[0].data = values;
-      remainingChart.update('none');
-    }
+/* BUG FIX: accept both label AND title props */
+function TweakSection({ label, title, children }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="twk-sect">{label || title}</div>
+      {children}
+    </div>
+  );
+}
+
+function TweakRadio({ label, value, options, onChange }) {
+  return (
+    <div className="twk-row">
+      <div className="twk-label">{label}</div>
+      <div className="twk-radios">
+        {options.map(opt => (
+          <button
+            key={opt.value}
+            className={`twk-radio-btn${value === opt.value ? " active" : ""}`}
+            onClick={() => onChange(opt.value)}
+          >{opt.label}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TweakSelect({ label, value, options, onChange }) {
+  return (
+    <div className="twk-row">
+      <div className="twk-label">{label}</div>
+      <select className="twk-select" value={value} onChange={e => onChange(e.target.value)}>
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function TweakColor({ label, value, onChange }) {
+  return (
+    <div className="twk-row">
+      <div className="twk-label">{label}</div>
+      <div className="twk-color">
+        <input type="color" value={value} onChange={e => onChange(e.target.value)} />
+        <span className="twk-color-hex">{value}</span>
+      </div>
+    </div>
+  );
+}
+
+function TweakToggle({ label, value, onChange }) {
+  return (
+    <div className="twk-toggle-row">
+      <div className="twk-label">{label}</div>
+      <button
+        className={`twk-toggle${value ? " on" : ""}`}
+        onClick={() => onChange(!value)}
+        aria-pressed={value}
+        aria-label={label}
+      >
+        <div className="twk-toggle-knob" />
+      </button>
+    </div>
+  );
+}
+
+function TweaksPanel({ title, children }) {
+  const [open, setOpen] = useStateTwk(false);
+  const ref = useRefTwk(null);
+  useEffectTwk(() => {
+    if (!open) return;
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+  return (
+    <div className="twk-panel" ref={ref}>
+      {open && (
+        <div className="twk-drawer">
+          <div className="twk-title">{title || "Tweaks"}</div>
+          {children}
+        </div>
+      )}
+      <button className="twk-fab" onClick={() => setOpen(o => !o)} aria-label="Open tweaks panel" title="Tweaks">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+        </svg>
+      </button>
+    </div>
+  );
+}
+Object.assign(window, { useTweaks, TweaksPanel, TweakSection, TweakRadio, TweakSelect, TweakColor, TweakToggle });
+  </script>
+
+  <!-- meter-viz.jsx -->
+  <script type="text/babel">
+/* ---- Gauge visualization (vertical fill with flow lines) ---- */
+function GaugeViz({ pct, kwh, maxKwh, accent, density }) {
+  const fillH = `${Math.max(0, Math.min(100, pct))}%`;
+  const color = pct < 15 ? "var(--danger)" : pct < 30 ? "var(--warn)" : accent || "var(--accent)";
+  const ticks = [100, 75, 50, 25, 0];
+  return (
+    <div className="credit-gauge" style={{ height: density === "compact" ? 200 : density === "spacious" ? 300 : 240 }}>
+      <div className="gauge-ticks">
+        {ticks.map(t => (
+          <div key={t} className="gauge-tick">
+            <span>{t}%</span>
+          </div>
+        ))}
+      </div>
+      <div className="gauge-vessel" style={{ position: "relative" }}>
+        <div className="gauge-fill" style={{ height: fillH, background: color }}>
+          <div className="gauge-flow" />
+        </div>
+        <div className="gauge-label">
+          <div className="gauge-pct">{Math.round(pct)}<span>%</span></div>
+          <div className="gauge-vol">{kwh != null ? kwh.toFixed(1) : "—"} kWh</div>
+        </div>
+        <div className="gauge-bolt" aria-hidden="true">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 L4 14 H11 L9 22 L20 9 H13 L13 2 Z"/></svg>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---- Dial (SVG arc) visualization ---- */
+function DialViz({ pct, kwh, maxKwh, accent }) {
+  const r = 80, cx = 100, cy = 100;
+  const startAngle = -220, sweep = 260;
+  const toRad = deg => (deg * Math.PI) / 180;
+  const arcPath = (pctVal) => {
+    const angle = startAngle + sweep * (pctVal / 100);
+    const x1 = cx + r * Math.cos(toRad(startAngle));
+    const y1 = cy + r * Math.sin(toRad(startAngle));
+    const x2 = cx + r * Math.cos(toRad(angle));
+    const y2 = cy + r * Math.sin(toRad(angle));
+    const largeArc = sweep * (pctVal / 100) > 180 ? 1 : 0;
+    return `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`;
+  };
+  const color = pct < 15 ? "var(--danger)" : pct < 30 ? "var(--warn)" : accent || "var(--accent)";
+  return (
+    <div className="gauge-dial-wrap" style={{ height: 200 }}>
+      <svg className="gauge-dial" viewBox="0 0 200 200">
+        <path d={arcPath(100)} fill="none" stroke="var(--surface-3)" strokeWidth="12" strokeLinecap="round"/>
+        <path d={arcPath(Math.max(0, Math.min(100, pct)))} fill="none" stroke={color} strokeWidth="12" strokeLinecap="round" style={{ transition: "stroke-dashoffset 1.2s ease" }}/>
+        <text x="100" y="105" textAnchor="middle" className="dial-pct" style={{ fill: "var(--text)", fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 700 }}>
+          {Math.round(pct)}%
+        </text>
+        <text x="100" y="128" textAnchor="middle" className="dial-vol" style={{ fill: "var(--muted)", fontFamily: "var(--font-mono)", fontSize: 11 }}>
+          {kwh != null ? kwh.toFixed(1) : "—"} kWh
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+/* ---- Bar visualization ---- */
+function BarViz({ pct, kwh, maxKwh, accent }) {
+  const color = pct < 15 ? "var(--danger)" : pct < 30 ? "var(--warn)" : accent || "var(--accent)";
+  const gridLines = [25, 50, 75];
+  return (
+    <div className="tank-bar-wrap" style={{ height: 200 }}>
+      <div className="tank-bar">
+        {gridLines.map(g => (
+          <div key={g} className="bar-grid" style={{ bottom: `${g}%` }} />
+        ))}
+        <div className="tank-bar-fill" style={{ height: `${Math.max(0, Math.min(100, pct))}%`, background: color }} />
+      </div>
+      <div className="tank-bar-label">
+        <div className="tank-pct">{Math.round(pct)}<span style={{ fontSize: 18, color: "var(--text-2)", fontWeight: 500, marginLeft: 2 }}>%</span></div>
+        <div className="tank-vol" style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-2)", marginTop: 6 }}>{kwh != null ? kwh.toFixed(1) : "—"} kWh</div>
+      </div>
+    </div>
+  );
+}
+
+/* ---- MeterCard: wraps all viz styles ---- */
+function MeterCard({ meter, accent, vizStyle = "gauge", density = "comfortable", daysLeft }) {
+  const r = meter.reading || {};
+  const maxKwh = meter.meter_capacity_kwh || 250;
+  const kwh = r.remaining_kwh ?? 0;
+  const pct = maxKwh > 0 ? (kwh / maxKwh) * 100 : 0;
+  const statusClass = kwh < 15 ? "status-danger" : kwh < 40 ? "status-warn" : "";
+
+  return (
+    <div className={`meter-card density-${density} ${statusClass}`}>
+      <div className="meter-head">
+        <div>
+          <div className="tank-eyebrow">
+            <span className={`status-dot${kwh < 15 ? " status-danger" : kwh < 40 ? " status-warn" : ""}`} />
+            Prepaid Meter
+            <span className="tank-id" style={{ color: "var(--muted)", fontFamily: "var(--font-mono)", fontSize: 10 }}>
+              {meter.meter_serial || "MTR-001"}
+            </span>
+          </div>
+          <div className="meter-name">Credit Remaining</div>
+          <div className="meter-cap">{maxKwh} kWh capacity · {meter.tariff_currency || "RWF"} {meter.tariff_rate_per_kwh || "—"}/kWh avg</div>
+        </div>
+      </div>
+      <div className="meter-body">
+        {vizStyle === "gauge" && <GaugeViz pct={pct} kwh={kwh} maxKwh={maxKwh} accent={accent} density={density} />}
+        {vizStyle === "dial"  && <DialViz  pct={pct} kwh={kwh} maxKwh={maxKwh} accent={accent} density={density} />}
+        {vizStyle === "bar"   && <BarViz   pct={pct} kwh={kwh} maxKwh={maxKwh} accent={accent} density={density} />}
+        <div className="tank-stats">
+          <div className="stat">
+            <div className="stat-label">Days left</div>
+            <div className="stat-value">
+              <span className="stat-num">{daysLeft != null ? daysLeft.toFixed(1) : "—"}</span>
+              <span className="stat-unit">d</span>
+            </div>
+            <div className="stat-sub">at current rate</div>
+          </div>
+          <div className="stat">
+            <div className="stat-label">Avg/day</div>
+            <div className="stat-value">
+              <span className="stat-num">{meter.avg_kwh != null ? meter.avg_kwh.toFixed(2) : "—"}</span>
+              <span className="stat-unit">kWh</span>
+            </div>
+            <div className="stat-sub">7-day average</div>
+          </div>
+          <div className="stat">
+            <div className="stat-label">Today</div>
+            <div className="stat-value">
+              <span className="stat-num">{meter.today_kwh != null ? meter.today_kwh.toFixed(1) : "—"}</span>
+              <span className="stat-unit">kWh</span>
+            </div>
+            <div className="stat-sub">used so far</div>
+          </div>
+          <div className="stat">
+            <div className="stat-label">Lifetime</div>
+            <div className="stat-value">
+              <span className="stat-num">{r.lifetime_kwh != null ? Math.round(r.lifetime_kwh).toLocaleString() : "—"}</span>
+              <span className="stat-unit">kWh</span>
+            </div>
+            <div className="stat-sub">all-time total</div>
+          </div>
+        </div>
+      </div>
+      <div className="tank-foot">
+        <div className="foot-row">
+          <span style={{ color: "var(--muted)" }}>Last read</span>
+          <span className="sensor-meta">{r.time ? new Date(r.time).toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "—"}</span>
+        </div>
+        <div className="foot-row">
+          <span style={{ color: "var(--muted)" }}>Modbus</span>
+          <span className={`pump-state${r.instant_load_w != null ? " on" : ""}`}><span className="pump-dot" />{r.instant_load_w != null ? "signal" : "no signal"}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---- Power heatmap ---- */
+function PowerHeatmap({ data, accent, unit = "kwh", tariff = window.REG_TARIFF }) {
+  const today = new Date();
+  const days = [];
+  for (let i = 89; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0, 10));
   }
 
-  async function loadLoadChart() {
-    const data = await fetch('/api/history/load').then(r => r.json());
-    if (!data.length) return;
-    const labels = data.map(d => {
-      const t = new Date(d.time);
-      return (t.getMonth()+1)+'/'+t.getDate()+' '+t.getHours()+':'+String(t.getMinutes()).padStart(2,'0');
+  const lookup = {};
+  data.forEach(d => { lookup[d.date] = d; });
+
+  const valFor = (iso) => {
+    const d = lookup[iso];
+    if (!d) return null;
+    if (unit === "rwf") {
+      const prior = window.kwhMonthToDate(iso, data, tariff);
+      return window.tariffCostFor(d.kwh, prior, tariff);
+    }
+    return d.kwh;
+  };
+
+  const vals = days.map(iso => valFor(iso)).filter(v => v != null);
+  const maxVal = vals.length ? Math.max(...vals) : 1;
+
+  const accentRaw = accent || "var(--accent)";
+
+  const colorForVal = (v) => {
+    if (v == null) return "var(--surface-2)";
+    const intensity = maxVal > 0 ? v / maxVal : 0;
+    return `color-mix(in oklch, ${accentRaw} ${Math.round(intensity * 90 + 10)}%, var(--surface-2))`;
+  };
+
+  // Group into weeks (columns)
+  const firstDay = new Date(days[0]);
+  const startOffset = firstDay.getDay(); // 0=Sun
+  const allCells = [];
+  for (let i = 0; i < startOffset; i++) allCells.push(null);
+  days.forEach(iso => allCells.push(iso));
+
+  const weeks = [];
+  for (let i = 0; i < allCells.length; i += 7) {
+    weeks.push(allCells.slice(i, i + 7));
+  }
+
+  const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
+  const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  // Month label positions
+  const monthLabels = [];
+  weeks.forEach((week, wi) => {
+    week.forEach((iso, di) => {
+      if (!iso) return;
+      const d = new Date(iso);
+      if (d.getDate() <= 7) {
+        monthLabels.push({ wi, label: MONTH_NAMES[d.getMonth()] });
+      }
     });
-    const values = data.map(d => d.value);
+  });
 
-    if (!loadChart) {
-      const ctx = document.getElementById('load-chart').getContext('2d');
-      loadChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [{ label: 'Load (W)', data: values, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', tension: 0.3, pointRadius: 3, fill: true }]
-        },
-        options: {
-          responsive: true, animation: false,
-          scales: {
-            x: { ticks: { color: '#8892a4', maxTicksLimit: 8 }, grid: { color: '#2a2d3e' } },
-            y: { ticks: { color: '#8892a4' }, grid: { color: '#2a2d3e' }, beginAtZero: true }
-          },
-          plugins: { legend: { display: false } }
-        }
-      });
-    } else {
-      loadChart.data.labels = labels;
-      loadChart.data.datasets[0].data = values;
-      loadChart.update('none');
-    }
-  }
+  const fmtTip = (iso) => {
+    const v = valFor(iso);
+    if (v == null) return `${iso}: no data`;
+    return unit === "rwf"
+      ? `${iso}: ${Math.round(v).toLocaleString()} RWF`
+      : `${iso}: ${v.toFixed(2)} kWh`;
+  };
 
-  async function loadAppliances() {
-    const data = await fetch('/api/appliances').then(r => r.json());
-    if (!data.length) return;
+  const legendSteps = [0, 0.25, 0.5, 0.75, 1];
 
-    const tbody = document.querySelector('#appliance-table tbody');
-    const max = data[0].est_daily_kwh;
-    tbody.innerHTML = data.map(a => {
-      const pct = max > 0 ? Math.round(a.est_daily_kwh / max * 100) : 0;
-      return `<tr>
-        <td>${a.appliance}</td>
-        <td style="color:var(--muted)">${a.room}</td>
-        <td>${a.est_daily_kwh.toFixed(3)}</td>
-        <td><div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div></td>
-      </tr>`;
-    }).join('');
+  return (
+    <div className="heatmap">
+      <div className="heatmap-months" style={{ marginLeft: 24 }}>
+        {monthLabels.map((ml, i) => (
+          <span key={i} className="hm-month" style={{ left: ml.wi * 16 }}>{ml.label}</span>
+        ))}
+      </div>
+      <div className="heatmap-body">
+        <div className="heatmap-days" style={{ height: 7 * 16, width: 18 }}>
+          {DAY_LABELS.map((d, i) => (
+            <span key={i} className="hm-day" style={{ top: i * 16 + 1 }}>{d}</span>
+          ))}
+        </div>
+        <div className="heatmap-grid">
+          {weeks.map((week, wi) => (
+            <div key={wi} className="hm-week">
+              {week.map((iso, di) => (
+                <div
+                  key={di}
+                  className={`hm-cell${!iso ? " hm-empty" : ""}`}
+                  style={{ background: iso ? colorForVal(valFor(iso)) : "transparent" }}
+                  title={iso ? fmtTip(iso) : ""}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="heatmap-legend">
+        <span>Less</span>
+        {legendSteps.map((s, i) => (
+          <div key={i} className="hm-legend-cell"
+            style={{ background: `color-mix(in oklch, ${accentRaw} ${Math.round(s * 90 + 10)}%, var(--surface-2))` }}
+          />
+        ))}
+        <span>More</span>
+        <span className="hm-max">max {unit === "rwf" ? `${Math.round(maxVal).toLocaleString()} RWF` : `${maxVal.toFixed(1)} kWh`}</span>
+      </div>
+    </div>
+  );
+}
+Object.assign(window, { GaugeViz, DialViz, BarViz, MeterCard, PowerHeatmap });
+  </script>
 
-    // Room aggregation for pie
-    const roomMap = {};
-    data.forEach(a => {
-      roomMap[a.room] = (roomMap[a.room] || 0) + a.est_daily_kwh;
+  <!-- components.jsx -->
+  <script type="text/babel">
+/* ---- PowerAlertBanner ---- */
+function PowerAlertBanner({ daysLeft, remainingKwh }) {
+  if (daysLeft == null || daysLeft > 3) return null;
+  const critical = daysLeft < 1.5;
+  return (
+    <div className="alert-banner" role="alert">
+      <div className="alert-dot" />
+      <div className="alert-text">
+        <strong>{critical ? "Critical: " : "Low credit: "}</strong>
+        {remainingKwh.toFixed(1)} kWh remaining &mdash; approximately {daysLeft.toFixed(1)} day{daysLeft !== 1 ? "s" : ""} left at current usage.
+        {critical ? " Top up immediately to avoid disconnection." : " Consider topping up soon."}
+      </div>
+      <a href="/entry" className="alert-cta">Top up</a>
+    </div>
+  );
+}
+
+/* ---- LoadCard — BUG FIX: accept appliances prop instead of window.MOCK_APPLIANCES ---- */
+const LoadCard = ({ meter, loadData, appliances = [], accent, density }) => {
+  const reading = meter.reading || {};
+  const w = reading.instant_load_w;
+  const peak = meter.peak_load_today_w;
+  const onNow = appliances.filter(a => a.on_now);
+
+  const svgW = 400, svgH = 140;
+  const pad = { l: 32, r: 8, t: 8, b: 20 };
+  const plotW = svgW - pad.l - pad.r;
+  const plotH = svgH - pad.t - pad.b;
+
+  let path = "", area = "";
+  if (loadData && loadData.length > 1) {
+    const maxW = Math.max(...loadData.map(d => d.w ?? d.value ?? 0), 1);
+    const pts = loadData.map((d, i) => {
+      const x = pad.l + (i / (loadData.length - 1)) * plotW;
+      const y = pad.t + plotH - ((d.w ?? d.value ?? 0) / maxW) * plotH;
+      return [x, y];
     });
-    const rooms = Object.keys(roomMap);
-    const vals = rooms.map(r => roomMap[r]);
+    path = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
+    area = path + ` L ${pts[pts.length - 1][0].toFixed(1)} ${(pad.t + plotH).toFixed(1)} L ${pad.l} ${(pad.t + plotH).toFixed(1)} Z`;
+  }
 
-    if (!roomChart) {
-      const ctx = document.getElementById('room-chart').getContext('2d');
-      roomChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: rooms,
-          datasets: [{ label: 'kWh/day', data: vals, backgroundColor: COLORS, borderRadius: 6 }]
-        },
-        options: {
-          responsive: true, animation: false, indexAxis: 'y',
-          scales: {
-            x: { ticks: { color: '#8892a4' }, grid: { color: '#2a2d3e' } },
-            y: { ticks: { color: '#e2e8f0' }, grid: { display: false } }
-          },
-          plugins: { legend: { display: false } }
-        }
-      });
-    } else {
-      roomChart.data.labels = rooms;
-      roomChart.data.datasets[0].data = vals;
-      roomChart.update('none');
+  const accentColor = accent || "var(--accent)";
+
+  return (
+    <div className={`load-card density-${density}`}>
+      <div className="load-head">
+        <div>
+          <div className="tank-eyebrow">
+            <span className="status-dot" />
+            Instant Load
+          </div>
+          <div className="load-now">
+            <span className="load-now-num">{w != null ? Math.round(w).toLocaleString() : "—"}</span>
+            <span className="load-now-unit">W</span>
+          </div>
+          <div className="load-sub">
+            <span className="load-pulse-dot" />
+            Peak today: {peak != null ? peak.toLocaleString() : "—"} W
+          </div>
+        </div>
+      </div>
+
+      {loadData && loadData.length > 1 && (
+        <div className="load-chart-wrap">
+          <svg className="load-chart-svg" viewBox={`0 0 ${svgW} ${svgH}`} preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="load-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={accentColor} stopOpacity="0.25"/>
+                <stop offset="100%" stopColor={accentColor} stopOpacity="0.02"/>
+              </linearGradient>
+            </defs>
+            <g className="load-chart-grid">
+              {[0.25, 0.5, 0.75].map(f => (
+                <line key={f}
+                  x1={pad.l} y1={pad.t + plotH * (1 - f)}
+                  x2={pad.l + plotW} y2={pad.t + plotH * (1 - f)} />
+              ))}
+            </g>
+            {area && <path d={area} fill="url(#load-grad)" />}
+            {path && <path d={path} fill="none" stroke={accentColor} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />}
+          </svg>
+        </div>
+      )}
+
+      {onNow.length > 0 && (
+        <div className="active-appliances">
+          {onNow.map((a, i) => (
+            <span key={i} className="appl-pill">
+              <span className="appl-dot" />
+              <strong>{a.appliance}</strong>
+              <span>{a.room}</span>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ---- AppliancesCard ---- */
+function AppliancesCard({ data = [], accent }) {
+  const [tab, setTab] = React.useState("all");
+  const filtered = tab === "on" ? data.filter(a => a.on_now) : data;
+  const maxKwh = filtered.length ? Math.max(...filtered.map(a => a.est_daily_kwh || 0), 0.001) : 0.001;
+
+  return (
+    <div className="appliances-card">
+      <div className="appliances-head">
+        <div>
+          <h3>Appliances</h3>
+          <div className="sub">{data.length} tracked · {data.filter(a => a.on_now).length} on now</div>
+        </div>
+        <div className="appl-tabs">
+          <button className={`appl-tab${tab === "all" ? " active" : ""}`} onClick={() => setTab("all")}>All</button>
+          <button className={`appl-tab${tab === "on" ? " active" : ""}`} onClick={() => setTab("on")}>On now</button>
+        </div>
+      </div>
+      {filtered.length === 0 ? (
+        <div style={{ color: "var(--muted)", fontSize: 13, padding: "12px 0" }}>
+          {data.length === 0 ? "No appliance data yet." : "None currently on."}
+        </div>
+      ) : (
+        <div className="appl-table">
+          {filtered.map((a, i) => {
+            const barW = maxKwh > 0 ? (a.est_daily_kwh || 0) / maxKwh * 100 : 0;
+            return (
+              <div key={i} className="appl-row">
+                <span className={`row-dot${a.on_now ? " on" : ""}`} />
+                <span className="a-name">{a.appliance}</span>
+                <span className="a-room">{a.room}</span>
+                <span className="a-kwh">{(a.est_daily_kwh || 0).toFixed(3)}</span>
+                <span className="a-bar"><span className="a-bar-fill" style={{ transform: `scaleX(${barW / 100})`, background: accent || "var(--accent)" }} /></span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---- TopupList ---- */
+function TopupList({ topups = [], currency = "RWF" }) {
+  return (
+    <div className="topup-list">
+      {topups.slice(0, 8).map((t, i) => {
+        const effRate = t.kwh > 0 ? Math.round(t.cost_rwf / t.kwh) : null;
+        return (
+          <div key={i} className="topup-row">
+            <span className="t-date">{t.date || t.logged_at?.slice(0, 10) || "—"}</span>
+            <span className="t-kwh">{(t.kwh || 0).toFixed(1)} kWh</span>
+            <div className="t-cost-block">
+              {t.cost_rwf != null && <span className="t-cost-num">{Math.round(t.cost_rwf).toLocaleString()} {currency}</span>}
+              {effRate != null && <span className="t-cost-eff">{effRate} {currency}/kWh eff.</span>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+Object.assign(window, { PowerAlertBanner, LoadCard, AppliancesCard, TopupList });
+  </script>
+
+  <!-- cost-card.jsx -->
+  <script type="text/babel">
+function CostCard({ meter, daily = [], topups = [], tariff = window.REG_TARIFF, accent, onTariffRefresh }) {
+  const { useState: useStateCC, useEffect: useEffectCC } = React;
+  const [spinning, setSpinning] = useStateCC(false);
+  const [flash, setFlash] = useStateCC(null); // { msg, ok }
+
+  const r = meter.reading || {};
+  const today = new Date().toISOString().slice(0, 10);
+
+  /* Cost spent in a sliding window, respecting monthly tier resets */
+  function spentInWindow(days, tariff) {
+    const byMonth = {};
+    days.forEach(d => {
+      const dt = new Date(d.date);
+      const k = `${dt.getFullYear()}-${dt.getMonth()}`;
+      (byMonth[k] = byMonth[k] || []).push(d);
+    });
+    let total = 0;
+    Object.values(byMonth).forEach(mdays => {
+      mdays.sort((a, b) => a.date.localeCompare(b.date));
+      let pos = 0;
+      mdays.forEach(d => { total += window.tariffCostFor(d.kwh, pos, tariff); pos += d.kwh; });
+    });
+    return total;
+  }
+
+  /* Cost spent this month so far */
+  function spentInWindow90(daily, tariff) {
+    const last90 = daily.slice(-90);
+    return spentInWindow(last90, tariff);
+  }
+
+  /* Cost since last top-up */
+  function spentSinceTopup(daily, topups, tariff) {
+    if (!topups.length) return null;
+    const lastTopup = topups.slice().sort((a, b) => (b.date || b.logged_at || "").localeCompare(a.date || a.logged_at || ""))[0];
+    const topupDate = lastTopup.date || lastTopup.logged_at?.slice(0, 10);
+    if (!topupDate) return null;
+    /* BUG FIX: use `daily` param not window.MOCK_DAILY */
+    const prior = daily
+      .filter(d => d.date < topupDate)
+      .reduce((s, d) => s + d.kwh, 0);
+    const sinceTopup = daily.filter(d => d.date >= topupDate);
+    return spentInWindow(sinceTopup, tariff);
+  }
+
+  /* Today's cost */
+  function todayCost(daily, tariff) {
+    const todayEntry = daily.find(d => d.date === today);
+    if (!todayEntry) return null;
+    const priorThisMonth = daily
+      .filter(d => d.date.slice(0, 7) === today.slice(0, 7) && d.date < today)
+      .reduce((s, d) => s + d.kwh, 0);
+    return window.tariffCostFor(todayEntry.kwh, priorThisMonth, tariff);
+  }
+
+  /* Projected month-end cost */
+  function projectedMonth(daily, avgKwh, tariff) {
+    const thisMonth = today.slice(0, 7);
+    const soFarKwh = daily.filter(d => d.date.startsWith(thisMonth)).reduce((s, d) => s + d.kwh, 0);
+    const daysInMonth = new Date(new Date(today).getFullYear(), new Date(today).getMonth() + 1, 0).getDate();
+    const dayOfMonth = new Date(today).getDate();
+    const remaining = Math.max(0, daysInMonth - dayOfMonth) * (avgKwh || 0);
+    const totalKwh = soFarKwh + remaining;
+    const soFarCost = spentInWindow(daily.filter(d => d.date.startsWith(thisMonth)), tariff);
+    const remainingCost = window.tariffCostFor(remaining, soFarKwh, tariff);
+    return soFarCost + remainingCost;
+  }
+
+  const cost90 = spentInWindow90(daily, tariff);
+  const costToday = todayCost(daily, tariff);
+  const costSinceTopup = spentSinceTopup(daily, topups, tariff);
+  const costProjected = projectedMonth(daily, meter.avg_kwh, tariff);
+
+  /* Current tier */
+  const thisMonthKwh = daily
+    .filter(d => d.date.startsWith(today.slice(0, 7)))
+    .reduce((s, d) => s + d.kwh, 0);
+  const currentTierIdx = tariff.tiers.findIndex((t, i) => {
+    const prev = i === 0 ? 0 : tariff.tiers[i - 1].up_to;
+    return thisMonthKwh >= prev && thisMonthKwh < t.up_to;
+  });
+
+  const tierProgress = (idx) => {
+    const prev = idx === 0 ? 0 : tariff.tiers[idx - 1].up_to;
+    const cap = tariff.tiers[idx].up_to === Infinity ? prev + 100 : tariff.tiers[idx].up_to;
+    const width = cap - prev;
+    const used = Math.max(0, Math.min(thisMonthKwh - prev, width));
+    return width > 0 ? (used / width) * 100 : 0;
+  };
+
+  async function handleRefresh() {
+    setSpinning(true);
+    setFlash(null);
+    try {
+      const fresh = await window.refreshTariffFromREG();
+      onTariffRefresh && onTariffRefresh(fresh);
+      setFlash({ msg: "Tariff updated", ok: true });
+    } catch (e) {
+      setFlash({ msg: "Update failed", ok: false });
+    } finally {
+      setSpinning(false);
+      setTimeout(() => setFlash(null), 3000);
     }
   }
 
-  async function refresh() {
-    await Promise.all([loadSummary(), loadRemainingChart(), loadLoadChart(), loadAppliances()]);
-  }
+  const isStale = tariff.fetched_at
+    ? (Date.now() - new Date(tariff.fetched_at).getTime()) > 7 * 24 * 60 * 60 * 1000
+    : false;
 
-  refresh();
-  setInterval(refresh, 60000);
-</script>
+  return (
+    <div className="cost-card">
+      {flash && (
+        <div className={`tariff-flash ${flash.ok ? "tariff-flash-ok" : "tariff-flash-err"}`}>
+          {flash.msg}
+        </div>
+      )}
+      <div className="cost-head">
+        <div>
+          <h3>Cost tracking</h3>
+          <div className="sub">REG tiered tariff · {tariff.currency || "RWF"} · {tariff.tiers.length} tiers</div>
+        </div>
+        <button
+          className={`tariff-refresh${spinning ? " spinning" : ""}`}
+          disabled={spinning}
+          onClick={handleRefresh}
+          title="Refresh tariff from REG"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/>
+          </svg>
+          {spinning ? "Refreshing…" : "Refresh tariff"}
+        </button>
+      </div>
+
+      <div className="cost-tiles">
+        <div className="cost-tile">
+          <div className="cost-eyebrow">Today</div>
+          <div className="cost-num">
+            {costToday != null ? Math.round(costToday).toLocaleString() : "—"}
+            <small>{tariff.currency || "RWF"}</small>
+          </div>
+          <div className="cost-sub">{meter.today_kwh != null ? meter.today_kwh.toFixed(2) : "—"} kWh used</div>
+        </div>
+        <div className="cost-tile">
+          <div className="cost-eyebrow">Since top-up</div>
+          <div className="cost-num">
+            {costSinceTopup != null ? Math.round(costSinceTopup).toLocaleString() : "—"}
+            <small>{tariff.currency || "RWF"}</small>
+          </div>
+          <div className="cost-sub">last top-up cost</div>
+        </div>
+        <div className="cost-tile">
+          <div className="cost-eyebrow">90-day spend</div>
+          <div className="cost-num">
+            {Math.round(cost90).toLocaleString()}
+            <small>{tariff.currency || "RWF"}</small>
+          </div>
+          <div className="cost-sub">{daily.length} days of data</div>
+        </div>
+        <div className="cost-tile cost-tile-projected" style={{ borderColor: accent || "var(--accent)" }}>
+          <div className="cost-eyebrow">Month projected</div>
+          <div className="cost-num">
+            {Math.round(costProjected).toLocaleString()}
+            <small>{tariff.currency || "RWF"}</small>
+          </div>
+          <div className="cost-sub">at {meter.avg_kwh != null ? meter.avg_kwh.toFixed(2) : "—"} kWh/day</div>
+        </div>
+      </div>
+
+      <div className="tier-strip">
+        {tariff.tiers.map((tier, i) => {
+          const isActive = i === currentTierIdx;
+          const prog = tierProgress(i);
+          return (
+            <div key={i} className={`tier-block${isActive ? " tier-active" : ""}`}>
+              <div className="tier-head">
+                <span className="tier-label">{tier.label}</span>
+                <span className="tier-rate">{tier.rate} {tariff.currency || "RWF"}/kWh</span>
+              </div>
+              <div className="tier-bar">
+                <div className="tier-bar-fill" style={{ width: `${prog}%`, background: isActive ? (accent || "var(--accent)") : "var(--muted)" }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="tariff-meta">
+        <span className={`tariff-fetched${isStale ? " stale" : ""}`}>
+          Tariff fetched: {tariff.fetched_at ? new Date(tariff.fetched_at).toLocaleDateString("en", { day: "numeric", month: "short", year: "numeric" }) : "unknown"}
+          {isStale ? " (stale)" : ""}
+        </span>
+        <span>{tariff.source}</span>
+      </div>
+    </div>
+  );
+}
+window.CostCard = CostCard;
+  </script>
+
+  <!-- app.jsx -->
+  <script type="text/babel">
+const { useState, useEffect } = React;
+
+const ICONS = {
+  bolt: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2 L4 14 H11 L9 22 L20 9 H13 L13 2 Z" /></svg>,
+  clock: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>,
+  trend: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 17l6-6 4 4 8-8" /><path d="M14 7h7v7" /></svg>,
+  total: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M9 9h6v6H9z" /></svg>,
+};
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "vibe": "calm",
+  "theme": "light",
+  "accent": "#d97706",
+  "vizStyle": "gauge",
+  "density": "comfortable",
+  "showAlertDemo": false
+}/*EDITMODE-END*/;
+
+function spentInWindow90(daily, tariff) {
+  const byMonth = {};
+  daily.forEach(d => {
+    const dt = new Date(d.date);
+    const k = `${dt.getFullYear()}-${dt.getMonth()}`;
+    (byMonth[k] = byMonth[k] || []).push(d);
+  });
+  let total = 0;
+  Object.values(byMonth).forEach(days => {
+    days.sort((a, b) => a.date.localeCompare(b.date));
+    let pos = 0;
+    days.forEach(d => { total += window.tariffCostFor(d.kwh, pos, tariff); pos += d.kwh; });
+  });
+  return total;
+}
+
+function App() {
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const [meter, setMeter] = useState(null);
+  const [daily, setDaily] = useState([]);
+  const [loadData, setLoadData] = useState([]);
+  const [appliances, setAppliances] = useState([]);
+  const [topups, setTopups] = useState([]);
+  const [tariff, setTariff] = useState(window.REG_TARIFF);
+  const [heatmapUnit, setHeatmapUnit] = useState("kwh");
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-vibe", tweaks.vibe);
+    document.documentElement.setAttribute("data-theme", tweaks.theme);
+    document.documentElement.style.setProperty("--accent", tweaks.accent);
+  }, [tweaks.vibe, tweaks.theme, tweaks.accent]);
+
+  const fetchAll = () => {
+    Promise.all([
+      fetch('/api/summary').then(r => r.json()),
+      fetch('/api/history/daily').then(r => r.json()),
+      fetch('/api/history/load').then(r => r.json()),
+      fetch('/api/appliances').then(r => r.json()),
+      fetch('/api/topups').then(r => r.json()),
+    ]).then(([summary, dailyData, loadHist, appls, tupsData]) => {
+      setMeter(summary);
+      setDaily(dailyData);
+      setLoadData(loadHist);
+      setAppliances(appls);
+      setTopups(tupsData);
+      setLoading(false);
+      setFetchError(null);
+    }).catch(err => {
+      setFetchError(err.message || "Failed to load data");
+      setLoading(false);
+    });
+  };
+
+  useEffect(() => {
+    fetchAll();
+    const id = setInterval(fetchAll, 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (loading) return (
+    <div style={{ display: "grid", placeItems: "center", height: "100vh", color: "var(--muted)" }}>
+      <div className="spinner" />
+    </div>
+  );
+
+  if (!meter) return (
+    <div style={{ display: "grid", placeItems: "center", height: "100vh", color: "var(--danger)", fontFamily: "var(--font-mono)", fontSize: 13 }}>
+      {fetchError || "No data"}
+    </div>
+  );
+
+  const displayMeter = tweaks.showAlertDemo
+    ? { ...meter, reading: { ...meter.reading, remaining_kwh: 12.4 }, days_left: 1.9 }
+    : meter;
+
+  const r = displayMeter.reading || {};
+  const daysLeft = displayMeter.days_left;
+  const todayKwh = displayMeter.today_kwh;
+  const avgKwh = displayMeter.avg_kwh;
+  const todayTrend = todayKwh != null && avgKwh ? Math.round((todayKwh - avgKwh) / avgKwh * 100) : null;
+  const dailyTotal = daily.reduce((s, d) => s + d.kwh, 0);
+  const dailyAvg = daily.length ? dailyTotal / daily.length : 0;
+  const hasLiveReading = !!r.time;
+  const hasLoadSignal = r.instant_load_w != null;
+  const influxStatus = hasLiveReading ? "ok" : "warn";
+  const influxLabel = hasLiveReading ? "healthy" : "no data";
+
+  return (
+    <div className="app" data-screen-label="01 Power Dashboard">
+      <header className="topbar">
+        <div className="brand">
+          <div className="brand-mark" aria-hidden="true" style={{ "--accent": tweaks.accent }} />
+          <div>
+            <div className="brand-title">Power Dashboard</div>
+            <div className="brand-sub">Kigali · Home Automation</div>
+          </div>
+        </div>
+        <div className="topbar-right">
+          <span className="live-pill">{hasLiveReading ? "Live · 30s" : "Demo"}</span>
+          <button className="icon-btn" aria-label="Refresh" title="Refresh" onClick={fetchAll}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 12a9 9 0 1 1-3-6.7" /><path d="M21 4v5h-5" />
+            </svg>
+          </button>
+          <button className="icon-btn" aria-label="Toggle theme" title="Toggle theme"
+            onClick={() => setTweak("theme", tweaks.theme === "light" ? "dark" : "light")}>
+            {tweaks.theme === "light"
+              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+              : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>}
+          </button>
+        </div>
+      </header>
+
+      <PowerAlertBanner daysLeft={daysLeft} remainingKwh={r.remaining_kwh ?? 0} />
+
+      <section className="summary">
+        <div className="summary-tile">
+          <div className="eyebrow">{ICONS.bolt} Remaining credit</div>
+          <div className="big mono">{r.remaining_kwh != null ? r.remaining_kwh.toFixed(1) : "—"}<small>kWh</small></div>
+          <div className="sub">≈ {r.remaining_kwh != null ? Math.round(r.remaining_kwh * (displayMeter.tariff_rate_per_kwh || 310)).toLocaleString() : "—"} {displayMeter.tariff_currency || "RWF"}</div>
+        </div>
+        <div className="summary-tile">
+          <div className="eyebrow">{ICONS.clock} Days remaining</div>
+          <div className="big mono">{daysLeft != null ? daysLeft.toFixed(1) : "—"}<small>d</small></div>
+          <div className="sub">at {avgKwh != null ? avgKwh.toFixed(2) : "—"} kWh/day</div>
+        </div>
+        <div className="summary-tile">
+          <div className="eyebrow">{ICONS.trend} Today's use</div>
+          <div className="big mono">{todayKwh != null ? todayKwh.toFixed(1) : "—"}<small>kWh</small></div>
+          <div className="sub">
+            {todayTrend != null && (
+              <span className={`trend trend-${todayTrend > 0 ? "up" : "down"}`}>
+                {todayTrend > 0 ? "▲" : "▼"} {Math.abs(todayTrend)}%
+              </span>
+            )}
+            {avgKwh != null ? ` vs 7-day avg (${avgKwh.toFixed(1)} kWh)` : ""}
+          </div>
+        </div>
+        <div className="summary-tile">
+          <div className="eyebrow">{ICONS.total} Live load</div>
+          <div className="big mono">{r.instant_load_w != null ? Math.round(r.instant_load_w).toLocaleString() : "—"}<small>W</small></div>
+          <div className="sub">peak today {displayMeter.peak_load_today_w != null ? displayMeter.peak_load_today_w.toLocaleString() : "—"} W</div>
+        </div>
+      </section>
+
+      <section className="power-grid">
+        <MeterCard meter={displayMeter} accent={tweaks.accent} vizStyle={tweaks.vizStyle} density={tweaks.density} daysLeft={daysLeft} />
+        <LoadCard meter={displayMeter} loadData={loadData} appliances={appliances} accent={tweaks.accent} density={tweaks.density} />
+      </section>
+
+      <CostCard meter={displayMeter} daily={daily} topups={topups} tariff={tariff} accent={tweaks.accent} onTariffRefresh={setTariff} />
+
+      <section className="bottom-grid" style={{ marginBottom: 24 }}>
+        <div className="heatmap-card">
+          <div className="heatmap-head">
+            <div>
+              <h3>Daily consumption</h3>
+              <div className="sub">90 days · {heatmapUnit === "kwh" ? "kWh" : "RWF"} per day</div>
+            </div>
+            <div className="heatmap-controls">
+              <div className="unit-toggle" role="tablist">
+                <button className={`unit-tab ${heatmapUnit === "kwh" ? "active" : ""}`} onClick={() => setHeatmapUnit("kwh")} role="tab">kWh</button>
+                <button className={`unit-tab ${heatmapUnit === "rwf" ? "active" : ""}`} onClick={() => setHeatmapUnit("rwf")} role="tab">RWF</button>
+              </div>
+              <div className="heatmap-totals">
+                {heatmapUnit === "kwh" ? (
+                  <>
+                    <div><strong>{dailyTotal.toFixed(0)}</strong>90-day total (kWh)</div>
+                    <div><strong>{daily.length ? dailyAvg.toFixed(1) : "—"}</strong>avg / day</div>
+                  </>
+                ) : (
+                  <>
+                    <div><strong>{Math.round(spentInWindow90(daily, tariff)).toLocaleString()}</strong>90-day total (RWF)</div>
+                    <div><strong>{daily.length ? Math.round(spentInWindow90(daily, tariff) / 90).toLocaleString() : "—"}</strong>avg / day</div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          {daily.length > 0
+            ? <PowerHeatmap data={daily} accent={tweaks.accent} unit={heatmapUnit} tariff={tariff} />
+            : <div style={{ color: "var(--muted)", fontSize: 13, padding: "32px 0", textAlign: "center" }}>No daily consumption history yet</div>}
+        </div>
+
+        <div className="system-panel">
+          <h3>System</h3>
+          <div className="system-rows">
+            <div className="system-row"><div><div className="lbl">Modbus meter</div><div className="val">192.168.1.x:502</div></div><span className={`pill ${hasLoadSignal ? "ok" : "warn"}`}>{hasLoadSignal ? "signal" : "no signal"}</span></div>
+            <div className="system-row"><div><div className="lbl">InfluxDB</div><div className="val">power_meter · 30d window</div></div><span className={`pill ${influxStatus}`}>{influxLabel}</span></div>
+            <div className="system-row"><div><div className="lbl">Last read</div><div className="val">{r.time ? new Date(r.time).toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" }) : "—"}</div></div><span className={`pill ${hasLiveReading ? "ok" : "warn"}`}>{hasLiveReading ? "live" : "stale"}</span></div>
+            <div className="system-row"><div><div className="lbl">Tariff</div><div className="val">REG tiered · {tariff.tiers.length} bands (estimated)</div></div><span className="pill">prepaid</span></div>
+            <div className="system-row"><div><div className="lbl">Auto-refresh</div><div className="val">30s polling</div></div><span className="pill ok">on</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bottom-grid">
+        <AppliancesCard data={appliances} accent={tweaks.accent} />
+        <div className="system-panel">
+          <h3>Recent top-ups</h3>
+          {topups.length > 0
+            ? <TopupList topups={topups} currency={displayMeter.tariff_currency || "RWF"} />
+            : <div style={{ color: "var(--muted)", fontSize: 13 }}>No top-up history yet</div>}
+          <a href="/entry" className="alert-cta" style={{ background: tweaks.accent, color: "white", textDecoration: "none", display: "inline-block", alignSelf: "flex-start", marginTop: 4, padding: "8px 14px", borderRadius: "var(--radius-sm)", fontSize: 12, fontWeight: 600 }}>+ Log reading</a>
+        </div>
+      </section>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection title="Theme">
+          <TweakRadio label="Mode" value={tweaks.theme}
+            options={[{value:"light",label:"Light"},{value:"dark",label:"Dark"}]}
+            onChange={v => setTweak("theme", v)} />
+          <TweakRadio label="Vibe" value={tweaks.vibe}
+            options={[{value:"calm",label:"Calm"},{value:"industrial",label:"Industrial"},{value:"soft",label:"Soft"}]}
+            onChange={v => setTweak("vibe", v)} />
+          <TweakColor label="Accent" value={tweaks.accent} onChange={v => setTweak("accent", v)} />
+        </TweakSection>
+        <TweakSection title="Layout">
+          <TweakSelect label="Meter visualization" value={tweaks.vizStyle}
+            options={[{value:"gauge",label:"Gauge + flow"},{value:"dial",label:"Circular dial"},{value:"bar",label:"Abstract bar"}]}
+            onChange={v => setTweak("vizStyle", v)} />
+          <TweakRadio label="Density" value={tweaks.density}
+            options={[{value:"compact",label:"Compact"},{value:"comfortable",label:"Comfy"},{value:"spacious",label:"Spacious"}]}
+            onChange={v => setTweak("density", v)} />
+        </TweakSection>
+        <TweakSection title="Demo">
+          <TweakToggle label="Trigger low-credit alert" value={tweaks.showAlertDemo} onChange={v => setTweak("showAlertDemo", v)} />
+        </TweakSection>
+      </TweaksPanel>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
 </body>
-</html>
+</html>{% endraw %}

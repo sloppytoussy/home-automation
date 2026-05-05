@@ -1,272 +1,1613 @@
-<!DOCTYPE html>
+{% raw %}<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Water Monitor</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Water Monitor · Kigali Home</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    :root {
-      --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3e;
-      --text: #e2e8f0; --muted: #8892a4;
-      --blue: #3b82f6; --cyan: #06b6d4; --green: #22c55e;
-      --yellow: #eab308; --red: #ef4444; --purple: #a855f7;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
+/* ============================================================
+   Water Monitor — Stylesheet
+   Three vibes (calm | industrial | soft) × Two themes (light | dark)
+   ============================================================ */
 
-    header {
-      background: var(--surface); border-bottom: 1px solid var(--border);
-      padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between;
-    }
-    header h1 { font-size: 1.2rem; font-weight: 700; color: var(--cyan); }
-    #refresh-badge { font-size: 0.75rem; color: var(--muted); }
+/* ---------- THEME TOKENS ---------- */
 
-    main { max-width: 1200px; margin: 0 auto; padding: 1.5rem 2rem; }
+:root,
+[data-vibe="calm"][data-theme="light"] {
+  --bg:        oklch(0.985 0.005 240);
+  --surface:   oklch(1 0 0);
+  --surface-2: oklch(0.965 0.006 240);
+  --surface-3: oklch(0.94 0.008 240);
+  --border:    oklch(0.91 0.01 240);
+  --border-2:  oklch(0.86 0.012 240);
+  --text:      oklch(0.22 0.015 240);
+  --text-2:    oklch(0.46 0.012 240);
+  --muted:     oklch(0.62 0.012 240);
 
-    /* ---- TANK CARDS ---- */
-    .tanks-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+  --accent:    oklch(0.62 0.14 220);
+  --accent-2:  oklch(0.7 0.12 220);
+  --warn:      oklch(0.78 0.16 80);
+  --danger:    oklch(0.62 0.21 25);
+  --ok:        oklch(0.7 0.16 155);
 
-    .tank-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 14px; padding: 1.5rem; position: relative; overflow: hidden;
-    }
-    .tank-card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 0.2rem; }
-    .tank-card .capacity { font-size: 0.75rem; color: var(--muted); margin-bottom: 1.2rem; }
+  --radius:    16px;
+  --radius-sm: 10px;
+  --radius-xs: 6px;
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.04), 0 0 0 1px oklch(0 0 0 / 0.04);
+  --shadow:    0 4px 24px -8px oklch(0 0 0 / 0.08), 0 0 0 1px oklch(0 0 0 / 0.04);
 
-    /* Tank body — CSS animated fill */
-    .tank-body {
-      position: relative; width: 100%; height: 180px;
-      background: rgba(6,182,212,0.05);
-      border: 2px solid var(--border); border-radius: 6px 6px 4px 4px;
-      overflow: hidden; margin-bottom: 1rem;
-    }
-    .tank-fill {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      transition: height 1.2s ease;
-      border-radius: 0 0 3px 3px;
-    }
-    .tank-fill::before {
-      content: ''; position: absolute; top: -8px; left: -50%;
-      width: 200%; height: 16px;
-      background: inherit; border-radius: 50%;
-      opacity: 0.5;
-      animation: wave 3s linear infinite;
-    }
-    @keyframes wave {
-      0%   { transform: translateX(0); }
-      100% { transform: translateX(50%); }
-    }
-    .tank-fill.ok     { background: rgba(34,197,94,0.35); }
-    .tank-fill.warn   { background: rgba(234,179,8,0.35); }
-    .tank-fill.danger { background: rgba(239,68,68,0.35); }
+  --font-ui:      "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: "Inter", system-ui, sans-serif;
 
-    .tank-pct-label {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
-      font-size: 2rem; font-weight: 800; text-shadow: 0 1px 4px rgba(0,0,0,0.6);
-      pointer-events: none;
-    }
-    .tank-pct-label.ok     { color: var(--green); }
-    .tank-pct-label.warn   { color: var(--yellow); }
-    .tank-pct-label.danger { color: var(--red); }
+  --tracking-eyebrow: 0.08em;
+  --pad-card: 28px;
+}
 
-    /* Tick marks */
-    .tank-ticks {
-      position: absolute; right: 6px; top: 0; bottom: 0;
-      display: flex; flex-direction: column; justify-content: space-between;
-      padding: 4px 0; pointer-events: none;
-    }
-    .tick { font-size: 0.6rem; color: rgba(255,255,255,0.3); }
+[data-vibe="calm"][data-theme="dark"] {
+  --bg:        oklch(0.16 0.012 240);
+  --surface:   oklch(0.21 0.014 240);
+  --surface-2: oklch(0.245 0.016 240);
+  --surface-3: oklch(0.28 0.018 240);
+  --border:    oklch(0.32 0.02 240);
+  --border-2:  oklch(0.4 0.022 240);
+  --text:      oklch(0.96 0.005 240);
+  --text-2:    oklch(0.78 0.012 240);
+  --muted:     oklch(0.6 0.018 240);
+}
 
-    /* Stats grid under each tank */
-    .tank-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
-    .stat { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 0.6rem 0.8rem; }
-    .stat .s-label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
-    .stat .s-value { font-size: 1.1rem; font-weight: 700; }
-    .stat .s-value.cyan   { color: var(--cyan); }
-    .stat .s-value.green  { color: var(--green); }
-    .stat .s-value.yellow { color: var(--yellow); }
-    .stat .s-value.purple { color: var(--purple); }
+[data-vibe="industrial"][data-theme="dark"] {
+  --bg:        oklch(0.135 0.012 230);
+  --surface:   oklch(0.18 0.014 230);
+  --surface-2: oklch(0.22 0.016 230);
+  --surface-3: oklch(0.26 0.018 230);
+  --border:    oklch(0.3 0.022 230);
+  --border-2:  oklch(0.4 0.026 230);
+  --text:      oklch(0.95 0.012 200);
+  --text-2:    oklch(0.78 0.018 200);
+  --muted:     oklch(0.55 0.02 230);
 
-    /* Source badge + toggle (Tank 2) */
-    .source-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.8rem; }
-    .source-badge {
-      font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px;
-      text-transform: uppercase; letter-spacing: 0.06em;
-    }
-    .source-badge.rain  { background: rgba(59,130,246,0.2);  color: var(--blue); }
-    .source-badge.mains { background: rgba(6,182,212,0.2);   color: var(--cyan); }
-    .source-btn {
-      font-size: 0.72rem; background: var(--border); border: none; color: var(--muted);
-      border-radius: 6px; padding: 3px 10px; cursor: pointer;
-    }
-    .source-btn:hover { background: var(--blue); color: #fff; }
+  --accent:    oklch(0.78 0.18 195);
+  --warn:      oklch(0.85 0.18 90);
+  --danger:    oklch(0.7 0.22 25);
+  --ok:        oklch(0.78 0.18 155);
 
-    /* Pump badge */
-    .pump-badge { font-size: 0.7rem; margin-top: 0.5rem; }
-    .pump-badge span { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
-    .pump-badge .on  { background: var(--green); }
-    .pump-badge .off { background: var(--border); }
+  --radius:    4px;
+  --radius-sm: 2px;
+  --radius-xs: 0px;
 
-    /* Charts */
-    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; }
-    .panel h3 { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1rem; }
+  --font-ui:      "JetBrains Mono", ui-monospace, monospace;
+  --font-mono:    "JetBrains Mono", ui-monospace, monospace;
+  --font-display: "JetBrains Mono", ui-monospace, monospace;
+  --tracking-eyebrow: 0.14em;
+  --pad-card: 22px;
+}
 
-    @media (max-width: 800px) {
-      .tanks-row, .charts-row { grid-template-columns: 1fr; }
-    }
+[data-vibe="industrial"][data-theme="light"] {
+  --bg:        oklch(0.96 0.008 230);
+  --surface:   oklch(1 0 0);
+  --surface-2: oklch(0.94 0.008 230);
+  --surface-3: oklch(0.9 0.012 230);
+  --border:    oklch(0.84 0.014 230);
+  --border-2:  oklch(0.7 0.016 230);
+  --text:      oklch(0.18 0.014 230);
+  --text-2:    oklch(0.4 0.014 230);
+  --muted:     oklch(0.55 0.014 230);
+
+  --accent:    oklch(0.55 0.16 220);
+  --warn:      oklch(0.7 0.18 80);
+  --danger:    oklch(0.58 0.22 25);
+
+  --font-ui:      "JetBrains Mono", ui-monospace, monospace;
+  --font-mono:    "JetBrains Mono", ui-monospace, monospace;
+  --font-display: "JetBrains Mono", ui-monospace, monospace;
+  --tracking-eyebrow: 0.14em;
+  --radius: 4px;
+  --radius-sm: 2px;
+  --radius-xs: 0px;
+}
+
+[data-vibe="soft"][data-theme="light"] {
+  --bg:        oklch(0.975 0.012 75);
+  --surface:   oklch(0.99 0.006 75);
+  --surface-2: oklch(0.955 0.014 75);
+  --surface-3: oklch(0.92 0.018 75);
+  --border:    oklch(0.9 0.015 75);
+  --border-2:  oklch(0.82 0.018 75);
+  --text:      oklch(0.25 0.022 60);
+  --text-2:    oklch(0.48 0.02 60);
+  --muted:     oklch(0.62 0.022 60);
+
+  --accent:    oklch(0.7 0.14 200);
+  --warn:      oklch(0.78 0.15 65);
+  --danger:    oklch(0.65 0.2 28);
+  --ok:        oklch(0.74 0.15 160);
+
+  --radius:    24px;
+  --radius-sm: 14px;
+  --radius-xs: 10px;
+  --pad-card: 32px;
+  --tracking-eyebrow: 0.06em;
+}
+
+[data-vibe="soft"][data-theme="dark"] {
+  --bg:        oklch(0.2 0.018 60);
+  --surface:   oklch(0.25 0.02 60);
+  --surface-2: oklch(0.29 0.022 60);
+  --surface-3: oklch(0.34 0.024 60);
+  --border:    oklch(0.36 0.024 60);
+  --border-2:  oklch(0.45 0.026 60);
+  --text:      oklch(0.96 0.014 60);
+  --text-2:    oklch(0.78 0.018 60);
+  --muted:     oklch(0.62 0.022 60);
+  --accent:    oklch(0.78 0.13 205);
+  --radius:    24px;
+  --radius-sm: 14px;
+  --radius-xs: 10px;
+}
+
+/* ---------- BASE ---------- */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text); }
+body {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  font-feature-settings: "ss01", "cv11";
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; cursor: pointer; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* ---------- APP SHELL ---------- */
+.app {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 28px 40px 64px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand-mark {
+  width: 38px; height: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: grid; place-items: center;
+  position: relative;
+  overflow: hidden;
+}
+.brand-mark::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 0%, transparent 45%, var(--accent) 45%, var(--accent) 100%);
+  opacity: 0.85;
+}
+.brand-mark::after {
+  content: "";
+  position: absolute; left: -50%; right: -50%; top: 42%;
+  height: 4px;
+  background: var(--surface);
+  border-radius: 50%;
+  filter: blur(0.5px);
+}
+.brand-title { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; }
+.brand-sub   { font-size: 11px; color: var(--muted); letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; }
+
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.live-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; color: var(--text-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: 999px;
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+.live-pill::before {
+  content: "";
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 0 currentColor;
+  animation: live-pulse 2s ease-out infinite;
+  color: var(--ok);
+}
+@keyframes live-pulse {
+  0% { box-shadow: 0 0 0 0 var(--ok); }
+  100% { box-shadow: 0 0 0 6px transparent; }
+}
+.icon-btn {
+  display: inline-grid; place-items: center;
+  width: 36px; height: 36px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+}
+.icon-btn:hover { color: var(--text); border-color: var(--border-2); }
+
+/* ---------- SUMMARY STRIP ---------- */
+.summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.summary-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.summary-tile .eyebrow {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+  color: var(--muted);
+  display: flex; align-items: center; gap: 8px;
+}
+.summary-tile .big {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.summary-tile .big small { font-size: 16px; color: var(--muted); margin-left: 4px; font-weight: 500; }
+.summary-tile .sub { font-size: 12px; color: var(--text-2); }
+
+/* ---------- ALERT BANNER ---------- */
+.alert-banner {
+  background: color-mix(in oklch, var(--danger) 14%, var(--surface));
+  border: 1px solid color-mix(in oklch, var(--danger) 35%, var(--border));
+  border-radius: var(--radius);
+  padding: 16px 22px;
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 24px;
+  font-size: 13px;
+}
+.alert-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--danger);
+  box-shadow: 0 0 0 0 var(--danger);
+  animation: alert-pulse 1.6s ease-out infinite;
+  flex-shrink: 0;
+}
+@keyframes alert-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--danger) 60%, transparent); }
+  100% { box-shadow: 0 0 0 12px transparent; }
+}
+.alert-banner strong { font-weight: 600; }
+.alert-text { color: var(--text-2); flex: 1; }
+.alert-cta {
+  background: var(--danger);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: 12px; font-weight: 600;
+}
+.alert-cta:hover { filter: brightness(1.05); }
+
+/* ---------- TANK GRID ---------- */
+.tanks-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+/* ---------- TANK CARD ---------- */
+.tank-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--pad-card);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .25s ease;
+}
+.tank-card.status-danger { border-color: color-mix(in oklch, var(--danger) 45%, var(--border)); }
+.tank-card.status-warn   { border-color: color-mix(in oklch, var(--warn) 35%, var(--border)); }
+
+.tank-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.tank-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 10px; letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-2);
+  font-weight: 600;
+}
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+.status-dot.status-warn   { background: var(--warn); }
+.status-dot.status-danger { background: var(--danger); }
+.tank-id { color: var(--muted); font-weight: 500; font-family: var(--font-mono); }
+
+.tank-name {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  margin-top: 6px;
+  letter-spacing: -0.01em;
+}
+.tank-cap { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: var(--font-mono); }
+
+.source-toggle { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.source-label {
+  font-size: 9px; text-transform: uppercase; letter-spacing: var(--tracking-eyebrow);
+  color: var(--muted); font-weight: 600;
+}
+.source-pills {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+.source-pill {
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--text-2);
+  font-weight: 500;
+  transition: all .2s ease;
+}
+.source-pill.active { background: var(--accent); color: white; font-weight: 600; }
+.source-pill:not(.active):hover { color: var(--text); }
+
+.tank-body {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 28px;
+  align-items: stretch;
+}
+.density-compact .tank-body  { grid-template-columns: 160px 1fr; gap: 20px; }
+.density-spacious .tank-body { grid-template-columns: 240px 1fr; gap: 36px; }
+
+/* ---------- REALISTIC TANK ---------- */
+.tank-realistic {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 8px;
+  position: relative;
+}
+.tank-ticks { display: flex; flex-direction: column; justify-content: space-between; padding: 4px 0; }
+.tank-tick { display: flex; align-items: center; gap: 4px; font-size: 9px; color: var(--muted); font-family: var(--font-mono); }
+.tick-line { flex: 1; height: 1px; background: var(--border); }
+
+.tank-vessel {
+  position: relative;
+  background: linear-gradient(180deg, var(--surface-2) 0%, var(--surface-3) 100%);
+  border: 2px solid var(--border-2);
+  border-radius: var(--radius-xs) var(--radius-xs) calc(var(--radius-xs) + 2px) calc(var(--radius-xs) + 2px);
+  overflow: hidden;
+  box-shadow: inset 0 2px 8px oklch(0 0 0 / 0.06);
+}
+[data-theme="dark"] .tank-vessel { box-shadow: inset 0 2px 8px oklch(0 0 0 / 0.4); }
+
+.tank-glass {
+  position: absolute; inset: 0;
+  background: linear-gradient(105deg,
+    transparent 0%, transparent 35%,
+    color-mix(in oklch, white 15%, transparent) 38%,
+    color-mix(in oklch, white 15%, transparent) 42%,
+    transparent 45%, transparent 100%);
+  pointer-events: none;
+  z-index: 3;
+}
+[data-theme="dark"] .tank-glass {
+  background: linear-gradient(105deg,
+    transparent 0%, transparent 35%,
+    color-mix(in oklch, white 8%, transparent) 38%,
+    color-mix(in oklch, white 8%, transparent) 42%,
+    transparent 45%, transparent 100%);
+}
+
+.tank-water {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  transition: height 1.4s cubic-bezier(.4, 0, .2, 1);
+  z-index: 1;
+}
+.tank-water::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, color-mix(in oklch, white 12%, transparent) 0%, transparent 25%);
+  pointer-events: none;
+}
+.wave {
+  position: absolute;
+  left: -25%; right: -25%;
+  width: 150%;
+  height: 18px;
+  top: -10px;
+}
+.wave-1 { animation: wave-slide 5s linear infinite; }
+.wave-2 { animation: wave-slide 7s linear infinite reverse; top: -7px; }
+@keyframes wave-slide {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(25%); }
+}
+
+.bubble {
+  position: absolute;
+  bottom: 0;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: color-mix(in oklch, white 50%, transparent);
+  animation: bubble-rise 4s ease-in infinite;
+}
+@keyframes bubble-rise {
+  0%   { bottom: 0; opacity: 0; transform: scale(0.5); }
+  20%  { opacity: 0.8; }
+  100% { bottom: 100%; opacity: 0; transform: scale(1.2); }
+}
+
+.tank-label {
+  position: absolute; left: 0; right: 0; top: 50%;
+  transform: translateY(-50%);
+  text-align: center;
+  z-index: 4;
+  pointer-events: none;
+  text-shadow: 0 1px 12px var(--surface);
+}
+.tank-pct {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.tank-pct span { font-size: 18px; color: var(--text-2); font-weight: 500; margin-left: 2px; }
+.tank-vol { font-family: var(--font-mono); font-size: 11px; color: var(--text-2); margin-top: 6px; letter-spacing: 0.02em; }
+.density-compact  .tank-pct { font-size: 28px; }
+.density-spacious .tank-pct { font-size: 44px; }
+
+.tank-sensor {
+  position: absolute; top: 6px; left: 50%;
+  transform: translateX(-50%);
+  width: 14px; height: 6px;
+  background: var(--surface-3);
+  border-radius: 2px;
+  z-index: 4;
+  display: grid; place-items: center;
+}
+.sensor-pulse {
+  position: absolute;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: sensor-blink 2.4s ease-in-out infinite;
+}
+@keyframes sensor-blink {
+  0%, 90%, 100% { opacity: 0.3; }
+  45% { opacity: 1; }
+}
+
+/* ---------- DIAL ---------- */
+.tank-dial-wrap { display: grid; place-items: center; }
+.tank-dial { width: 100%; height: 100%; max-width: 280px; }
+.dial-pct { font-family: var(--font-display); font-size: 36px; font-weight: 700; fill: var(--text); font-variant-numeric: tabular-nums; }
+.dial-vol { font-family: var(--font-mono); font-size: 12px; fill: var(--muted); }
+
+/* ---------- BAR ---------- */
+.tank-bar-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: center; }
+.tank-bar {
+  position: relative;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  height: 100%;
+  overflow: hidden;
+}
+.tank-bar-fill { position: absolute; bottom: 0; left: 0; right: 0; transition: height 1.2s ease; }
+.bar-grid { position: absolute; left: 0; right: 0; height: 1px; background: var(--border); opacity: 0.5; }
+.tank-bar-label { text-align: left; }
+.tank-bar-label .tank-pct { font-size: 44px; }
+
+/* ---------- STATS ---------- */
+.tank-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-content: start;
+}
+.stat {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stat-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+  color: var(--muted);
+  font-weight: 600;
+}
+.stat-value {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  display: flex; align-items: baseline; gap: 4px;
+  margin-top: 2px;
+}
+.stat-num { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+.stat-unit { font-size: 12px; color: var(--muted); font-weight: 500; }
+.stat-sub {
+  font-size: 10.5px;
+  color: var(--text-2);
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono);
+}
+.trend { font-weight: 600; font-size: 10px; }
+.trend-up   { color: var(--warn); }
+.trend-down { color: var(--ok); }
+
+/* ---------- TANK FOOTER ---------- */
+.tank-foot {
+  border-top: 1px dashed var(--border);
+  padding-top: 16px;
+  display: flex; flex-direction: column; gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+}
+.foot-row { display: flex; justify-content: space-between; align-items: center; }
+.pump-state { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
+.pump-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.pump-state.on { color: var(--ok); }
+.pump-state.on .pump-dot {
+  background: var(--ok);
+  box-shadow: 0 0 0 0 var(--ok);
+  animation: live-pulse 1.8s ease-out infinite;
+}
+.foot-meta { color: var(--muted); }
+.sensor-meta { font-feature-settings: "tnum"; }
+
+/* ---------- HEATMAP ---------- */
+.heatmap-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--pad-card);
+}
+.heatmap-head {
+  display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;
+  flex-wrap: wrap; gap: 12px;
+}
+.heatmap-head h3 { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+.heatmap-head .sub { font-size: 12px; color: var(--muted); margin-top: 2px; font-family: var(--font-mono); }
+.heatmap-totals { display: flex; gap: 28px; font-family: var(--font-mono); font-size: 11px; color: var(--text-2); }
+.heatmap-totals strong { display: block; font-family: var(--font-display); font-size: 22px; color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.heatmap { position: relative; }
+.heatmap-months { position: relative; height: 14px; margin-left: 24px; margin-bottom: 4px; }
+.hm-month {
+  position: absolute;
+  font-size: 10px; color: var(--muted);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+}
+.heatmap-body { display: flex; gap: 6px; }
+.heatmap-days { position: relative; width: 18px; height: calc(7 * 16px); }
+.hm-day { position: absolute; font-size: 9px; color: var(--muted); font-family: var(--font-mono); }
+.heatmap-grid { display: flex; gap: 3px; flex: 1; overflow-x: auto; padding-bottom: 4px; }
+.hm-week { display: flex; flex-direction: column; gap: 3px; }
+.hm-cell {
+  width: 13px; height: 13px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: transform .12s ease;
+}
+.hm-cell:hover { transform: scale(1.4); outline: 1px solid var(--text); }
+.hm-empty { background: transparent; cursor: default; }
+.hm-empty:hover { transform: none; outline: none; }
+.heatmap-legend { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); font-family: var(--font-mono); margin-top: 14px; }
+.hm-legend-cell { width: 12px; height: 12px; border-radius: 3px; }
+.hm-max { margin-left: auto; }
+
+/* ---------- BOTTOM ROW ---------- */
+.bottom-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+.system-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--pad-card);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.system-panel h3 { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+.system-rows { display: flex; flex-direction: column; gap: 12px; }
+.system-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.system-row .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: var(--tracking-eyebrow); font-weight: 600; }
+.system-row .val { font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.pill {
+  font-size: 10px; padding: 3px 10px; border-radius: 999px;
+  background: var(--surface-3); color: var(--text-2);
+  font-family: var(--font-mono); text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+}
+.pill.ok   { background: color-mix(in oklch, var(--ok) 18%, var(--surface-2)); color: var(--ok); }
+.pill.warn { background: color-mix(in oklch, var(--warn) 18%, var(--surface-2)); color: var(--warn); }
+
+/* Loading / error states */
+.loading-screen {
+  display: flex; align-items: center; justify-content: center;
+  height: 80vh; flex-direction: column; gap: 16px;
+}
+.loading-screen .spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-screen .msg { font-size: 13px; color: var(--muted); font-family: var(--font-mono); }
+.error-banner {
+  background: color-mix(in oklch, var(--danger) 12%, var(--surface));
+  border: 1px solid color-mix(in oklch, var(--danger) 30%, var(--border));
+  border-radius: var(--radius);
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: var(--danger);
+  font-family: var(--font-mono);
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 1100px) {
+  .tanks-grid { grid-template-columns: 1fr; }
+  .summary { grid-template-columns: 1fr 1fr; }
+  .bottom-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .app { padding: 16px 16px 48px; }
+  .summary { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .summary-tile { padding: 14px 16px; }
+  .summary-tile .big { font-size: 24px; }
+  .tank-body { grid-template-columns: 1fr; gap: 20px; }
+  .tank-realistic { max-width: 220px; margin: 0 auto; height: 240px !important; }
+  .tank-stats { grid-template-columns: 1fr 1fr; }
+  .tank-head { flex-direction: column; align-items: stretch; gap: 14px; }
+  .source-toggle { align-items: flex-start; }
+  .tank-name { font-size: 19px; }
+  .tank-card { padding: 20px; }
+  .heatmap-card, .system-panel { padding: 20px; }
+  .topbar { flex-wrap: wrap; gap: 12px; }
+}
   </style>
 </head>
 <body>
-<header>
-  <h1>&#128167; Water Monitor</h1>
-  <span id="refresh-badge">Auto-refresh every 30s</span>
-</header>
+<div id="root"></div>
 
-<main>
-  <div class="tanks-row" id="tanks-row">
-    <!-- Rendered by JS -->
-  </div>
-  <div class="charts-row">
-    <div class="panel">
-      <h3>Tank 1 — Volume History (7 days)</h3>
-      <canvas id="chart-tank1" height="120"></canvas>
+<!-- ── tweaks-panel ─────────────────────────────────────────── -->
+<script type="text/babel">
+const __TWEAKS_STYLE = `
+  .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
+    max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+    background:rgba(250,249,247,.78);color:#29261b;
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+    border:.5px solid rgba(255,255,255,.6);border-radius:14px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);
+    font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+  .twk-hd{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 8px 10px 14px;cursor:move;user-select:none}
+  .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
+  .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
+    width:22px;height:22px;border-radius:6px;cursor:default;font-size:13px;line-height:1}
+  .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
+  .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;overflow-x:hidden;min-height:0;
+    scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.15) transparent}
+  .twk-body::-webkit-scrollbar{width:8px}
+  .twk-body::-webkit-scrollbar-track{background:transparent;margin:2px}
+  .twk-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;
+    border:2px solid transparent;background-clip:content-box}
+  .twk-row{display:flex;flex-direction:column;gap:5px}
+  .twk-row-h{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+  .twk-lbl{display:flex;justify-content:space-between;align-items:baseline;color:rgba(41,38,27,.72)}
+  .twk-lbl>span:first-child{font-weight:500}
+  .twk-val{color:rgba(41,38,27,.5);font-variant-numeric:tabular-nums}
+  .twk-sect{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:rgba(41,38,27,.45);padding:10px 0 0}
+  .twk-sect:first-child{padding-top:0}
+  .twk-field{appearance:none;width:100%;height:26px;padding:0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;
+    background:rgba(255,255,255,.6);color:inherit;font:inherit;outline:none}
+  .twk-field:focus{border-color:rgba(0,0,0,.25);background:rgba(255,255,255,.85)}
+  select.twk-field{padding-right:22px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='rgba(0,0,0,.5)' d='M0 0h10L5 6z'/></svg>");
+    background-repeat:no-repeat;background-position:right 8px center}
+  .twk-slider{appearance:none;-webkit-appearance:none;width:100%;height:4px;margin:6px 0;
+    border-radius:999px;background:rgba(0,0,0,.12);outline:none}
+  .twk-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:14px;height:14px;border-radius:50%;background:#fff;
+    border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+  .twk-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+    background:#fff;border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+  .twk-seg{position:relative;display:flex;padding:2px;border-radius:8px;
+    background:rgba(0,0,0,.06);user-select:none}
+  .twk-seg-thumb{position:absolute;top:2px;bottom:2px;border-radius:6px;
+    background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(0,0,0,.12);
+    transition:left .15s cubic-bezier(.3,.7,.4,1),width .15s}
+  .twk-seg.dragging .twk-seg-thumb{transition:none}
+  .twk-seg button{appearance:none;position:relative;z-index:1;flex:1;border:0;
+    background:transparent;color:inherit;font:inherit;font-weight:500;min-height:22px;
+    border-radius:6px;cursor:default;padding:4px 6px;line-height:1.2;overflow-wrap:anywhere}
+  .twk-toggle{position:relative;width:32px;height:18px;border:0;border-radius:999px;
+    background:rgba(0,0,0,.15);transition:background .15s;cursor:default;padding:0}
+  .twk-toggle[data-on="1"]{background:#34c759}
+  .twk-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+  .twk-toggle[data-on="1"] i{transform:translateX(14px)}
+  .twk-swatch{appearance:none;-webkit-appearance:none;width:56px;height:22px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:6px;padding:0;cursor:default;
+    background:transparent;flex-shrink:0}
+  .twk-swatch::-webkit-color-swatch-wrapper{padding:0}
+  .twk-swatch::-webkit-color-swatch{border:0;border-radius:5.5px}
+`;
+
+function useTweaks(defaults) {
+  const [values, setValues] = React.useState(defaults);
+  const setTweak = React.useCallback((keyOrEdits, val) => {
+    const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
+      ? keyOrEdits : { [keyOrEdits]: val };
+    setValues((prev) => ({ ...prev, ...edits }));
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*');
+  }, []);
+  return [values, setTweak];
+}
+
+function TweaksPanel({ title = 'Tweaks', children }) {
+  const [open, setOpen] = React.useState(false);
+  const dragRef = React.useRef(null);
+  const offsetRef = React.useRef({ x: 16, y: 16 });
+  const PAD = 16;
+
+  const clampToViewport = React.useCallback(() => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const w = panel.offsetWidth, h = panel.offsetHeight;
+    const maxRight = Math.max(PAD, window.innerWidth - w - PAD);
+    const maxBottom = Math.max(PAD, window.innerHeight - h - PAD);
+    offsetRef.current = {
+      x: Math.min(maxRight, Math.max(PAD, offsetRef.current.x)),
+      y: Math.min(maxBottom, Math.max(PAD, offsetRef.current.y)),
+    };
+    panel.style.right = offsetRef.current.x + 'px';
+    panel.style.bottom = offsetRef.current.y + 'px';
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    clampToViewport();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(clampToViewport) : null;
+    if (ro) { ro.observe(document.documentElement); return () => ro.disconnect(); }
+    window.addEventListener('resize', clampToViewport);
+    return () => window.removeEventListener('resize', clampToViewport);
+  }, [open, clampToViewport]);
+
+  React.useEffect(() => {
+    const onMsg = (e) => {
+      const t = e?.data?.type;
+      if (t === '__activate_edit_mode') setOpen(true);
+      else if (t === '__deactivate_edit_mode') setOpen(false);
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const dismiss = () => {
+    setOpen(false);
+    window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+  };
+
+  const onDragStart = (e) => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const r = panel.getBoundingClientRect();
+    const sx = e.clientX, sy = e.clientY;
+    const startRight = window.innerWidth - r.right;
+    const startBottom = window.innerHeight - r.bottom;
+    const move = (ev) => {
+      offsetRef.current = {
+        x: startRight - (ev.clientX - sx),
+        y: startBottom - (ev.clientY - sy),
+      };
+      clampToViewport();
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  if (!open) return null;
+  return (
+    <>
+      <style>{__TWEAKS_STYLE}</style>
+      <div ref={dragRef} className="twk-panel" style={{ right: offsetRef.current.x, bottom: offsetRef.current.y }}>
+        <div className="twk-hd" onMouseDown={onDragStart}>
+          <b>{title}</b>
+          <button className="twk-x" onMouseDown={(e) => e.stopPropagation()} onClick={dismiss}>✕</button>
+        </div>
+        <div className="twk-body">{children}</div>
+      </div>
+    </>
+  );
+}
+
+function TweakSection({ label, children }) {
+  return (<><div className="twk-sect">{label}</div>{children}</>);
+}
+
+function TweakRow({ label, value, children, inline = false }) {
+  return (
+    <div className={inline ? 'twk-row twk-row-h' : 'twk-row'}>
+      <div className="twk-lbl">
+        <span>{label}</span>
+        {value != null && <span className="twk-val">{value}</span>}
+      </div>
+      {children}
     </div>
-    <div class="panel">
-      <h3>Tank 2 — Volume History (7 days)</h3>
-      <canvas id="chart-tank2" height="120"></canvas>
+  );
+}
+
+function TweakSlider({ label, value, min = 0, max = 100, step = 1, unit = '', onChange }) {
+  return (
+    <TweakRow label={label} value={`${value}${unit}`}>
+      <input type="range" className="twk-slider" min={min} max={max} step={step}
+             value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    </TweakRow>
+  );
+}
+
+function TweakToggle({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <button type="button" className="twk-toggle" data-on={value ? '1' : '0'}
+              role="switch" aria-checked={!!value} onClick={() => onChange(!value)}><i /></button>
     </div>
-  </div>
-</main>
+  );
+}
 
-<script>
-  const charts = {};
+function TweakRadio({ label, value, options, onChange }) {
+  const trackRef = React.useRef(null);
+  const [dragging, setDragging] = React.useState(false);
+  const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }));
+  const idx = Math.max(0, opts.findIndex((o) => o.value === value));
+  const n = opts.length;
+  const valueRef = React.useRef(value);
+  valueRef.current = value;
 
-  function levelClass(pct, low) {
-    if (pct <= low) return 'danger';
-    if (pct <= low * 2) return 'warn';
-    return 'ok';
-  }
+  const segAt = (clientX) => {
+    const r = trackRef.current.getBoundingClientRect();
+    const inner = r.width - 4;
+    const i = Math.floor(((clientX - r.left - 2) / inner) * n);
+    return opts[Math.max(0, Math.min(n - 1, i))].value;
+  };
 
-  function fmt(v, dec = 0) {
-    return v == null ? '—' : Number(v).toFixed(dec);
-  }
+  const onPointerDown = (e) => {
+    setDragging(true);
+    const v0 = segAt(e.clientX);
+    if (v0 !== valueRef.current) onChange(v0);
+    const move = (ev) => {
+      if (!trackRef.current) return;
+      const v = segAt(ev.clientX);
+      if (v !== valueRef.current) onChange(v);
+    };
+    const up = () => {
+      setDragging(false);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
 
-  function renderTank(tank) {
-    const r = tank.reading || {};
-    const pct = r.level_pct ?? 0;
-    const low = tank.low_threshold_pct ?? 20;
-    const cls = levelClass(pct, low);
-    const vol = r.volume_liters ?? 0;
-    const cap = tank.capacity_liters;
+  return (
+    <TweakRow label={label}>
+      <div ref={trackRef} role="radiogroup" onPointerDown={onPointerDown}
+           className={dragging ? 'twk-seg dragging' : 'twk-seg'}>
+        <div className="twk-seg-thumb"
+             style={{ left: `calc(2px + ${idx} * (100% - 4px) / ${n})`, width: `calc((100% - 4px) / ${n})` }} />
+        {opts.map((o) => (
+          <button key={o.value} type="button" role="radio" aria-checked={o.value === value}>{o.label}</button>
+        ))}
+      </div>
+    </TweakRow>
+  );
+}
 
-    const sourceBadge = tank.sources.length > 1
-      ? `<div class="source-row">
-           <span class="source-badge ${tank.active_source}">${tank.active_source}</span>
-           ${tank.sources.filter(s => s !== tank.active_source).map(s =>
-             `<button class="source-btn" onclick="switchSource('${tank.id}','${s}')">Switch to ${s}</button>`
-           ).join('')}
-         </div>`
-      : '';
+function TweakSelect({ label, value, options, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <select className="twk-field" value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => {
+          const v = typeof o === 'object' ? o.value : o;
+          const l = typeof o === 'object' ? o.label : o;
+          return <option key={v} value={v}>{l}</option>;
+        })}
+      </select>
+    </TweakRow>
+  );
+}
 
-    return `
-    <div class="tank-card" id="card-${tank.id}">
-      <h2>${tank.name}</h2>
-      <div class="capacity">${(cap/1000).toFixed(1)} m³ capacity &mdash; Dayliff DDA 1000P</div>
-      ${sourceBadge}
-      <div class="tank-body">
-        <div class="tank-fill ${cls}" style="height:${Math.min(100,pct)}%"></div>
-        <span class="tank-pct-label ${cls}">${fmt(pct,1)}%</span>
-        <div class="tank-ticks">
-          <span class="tick">100%</span>
-          <span class="tick">75%</span>
-          <span class="tick">50%</span>
-          <span class="tick">25%</span>
-          <span class="tick">0%</span>
+function TweakColor({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <input type="color" className="twk-swatch" value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+window.useTweaks = useTweaks;
+window.TweaksPanel = TweaksPanel;
+window.TweakSection = TweakSection;
+window.TweakRow = TweakRow;
+window.TweakSlider = TweakSlider;
+window.TweakToggle = TweakToggle;
+window.TweakRadio = TweakRadio;
+window.TweakSelect = TweakSelect;
+window.TweakColor = TweakColor;
+</script>
+
+<!-- ── tank-viz ─────────────────────────────────────────────── -->
+<script type="text/babel">
+const TankViz = ({ tank, vizStyle = "realistic", accent, height = 280 }) => {
+  const pct = Math.max(0, Math.min(100, tank.reading?.level_pct ?? 0));
+  const low = tank.low_threshold_pct ?? 20;
+  const status = pct <= low ? "danger" : pct <= low * 1.5 ? "warn" : "ok";
+
+  if (vizStyle === "dial") return <TankDial tank={tank} status={status} accent={accent} height={height} />;
+  if (vizStyle === "bar")  return <TankBar  tank={tank} status={status} accent={accent} height={height} />;
+  return <TankRealistic tank={tank} status={status} accent={accent} height={height} />;
+};
+
+const TankRealistic = ({ tank, status, accent, height }) => {
+  const pct = Math.max(0, Math.min(100, tank.reading?.level_pct ?? 0));
+  const fillColor = status === "danger" ? "var(--danger)" : status === "warn" ? "var(--warn)" : accent;
+
+  return (
+    <div className="tank-realistic" style={{ height }}>
+      <div className="tank-ticks">
+        {[100, 75, 50, 25, 0].map(t => (
+          <div key={t} className="tank-tick">
+            <span className="tick-label">{t}</span>
+            <span className="tick-line" />
+          </div>
+        ))}
+      </div>
+      <div className="tank-vessel">
+        <div className="tank-glass" />
+        <div className="tank-water" style={{ height: `${pct}%`, background: fillColor }}>
+          <svg className="wave wave-1" viewBox="0 0 400 20" preserveAspectRatio="none">
+            <path d="M0,10 Q50,0 100,10 T200,10 T300,10 T400,10 V20 H0 Z" fill={fillColor} opacity="0.85" />
+          </svg>
+          <svg className="wave wave-2" viewBox="0 0 400 20" preserveAspectRatio="none">
+            <path d="M0,12 Q50,2 100,12 T200,12 T300,12 T400,12 V20 H0 Z" fill={fillColor} opacity="0.5" />
+          </svg>
+          {[...Array(5)].map((_, i) => (
+            <span key={i} className="bubble" style={{
+              left: `${15 + i * 17}%`,
+              animationDelay: `${i * 1.4}s`,
+              animationDuration: `${4 + (i % 3)}s`,
+            }} />
+          ))}
+        </div>
+        <div className="tank-label">
+          <div className="tank-pct">{pct.toFixed(1)}<span>%</span></div>
+          <div className="tank-vol">{Math.round(tank.reading?.volume_liters ?? 0).toLocaleString()} L</div>
+        </div>
+        <div className="tank-sensor" title="Ultrasonic sensor">
+          <span className="sensor-pulse" />
         </div>
       </div>
-      <div class="tank-stats">
-        <div class="stat">
-          <div class="s-label">Volume</div>
-          <div class="s-value cyan">${fmt(vol,0)} L</div>
-        </div>
-        <div class="stat">
-          <div class="s-label">Est. Days Left</div>
-          <div class="s-value ${cls === 'danger' ? 'yellow' : 'green'}">${tank.days_left != null ? fmt(tank.days_left,1) + 'd' : '—'}</div>
-        </div>
-        <div class="stat">
-          <div class="s-label">Drain Rate</div>
-          <div class="s-value yellow">${tank.rate_lph != null ? fmt(tank.rate_lph,1) + ' L/h' : '—'}</div>
-        </div>
-        <div class="stat">
-          <div class="s-label">Water Depth</div>
-          <div class="s-value purple">${r.level_cm != null ? fmt(r.level_cm,0) + ' cm' : '—'}</div>
-        </div>
+    </div>
+  );
+};
+
+const TankDial = ({ tank, status, accent, height }) => {
+  const pct = Math.max(0, Math.min(100, tank.reading?.level_pct ?? 0));
+  const fillColor = status === "danger" ? "var(--danger)" : status === "warn" ? "var(--warn)" : accent;
+  const r = 110, c = 2 * Math.PI * r, arc = c * 0.75;
+  const offset = arc * (1 - pct / 100);
+  return (
+    <div className="tank-dial-wrap" style={{ height }}>
+      <svg viewBox="-150 -150 300 300" className="tank-dial">
+        <circle r={r} cx="0" cy="0" fill="none" stroke="var(--border)" strokeWidth="14"
+          strokeDasharray={`${arc} ${c}`} strokeDashoffset="0"
+          transform="rotate(135)" strokeLinecap="round" />
+        <circle r={r} cx="0" cy="0" fill="none" stroke={fillColor} strokeWidth="14"
+          strokeDasharray={`${arc} ${c}`} strokeDashoffset={offset}
+          transform="rotate(135)" strokeLinecap="round"
+          style={{ transition: "stroke-dashoffset 1.2s ease" }} />
+        <text x="0" y="-6" textAnchor="middle" className="dial-pct">{pct.toFixed(1)}%</text>
+        <text x="0" y="22" textAnchor="middle" className="dial-vol">
+          {Math.round(tank.reading?.volume_liters ?? 0).toLocaleString()} L
+        </text>
+      </svg>
+    </div>
+  );
+};
+
+const TankBar = ({ tank, status, accent, height }) => {
+  const pct = Math.max(0, Math.min(100, tank.reading?.level_pct ?? 0));
+  const fillColor = status === "danger" ? "var(--danger)" : status === "warn" ? "var(--warn)" : accent;
+  return (
+    <div className="tank-bar-wrap" style={{ height }}>
+      <div className="tank-bar">
+        <div className="tank-bar-fill" style={{ height: `${pct}%`, background: fillColor }} />
+        {[20, 40, 60, 80].map(t => <div key={t} className="bar-grid" style={{ bottom: `${t}%` }} />)}
       </div>
-    </div>`;
-  }
+      <div className="tank-bar-label">
+        <div className="tank-pct">{pct.toFixed(1)}<span>%</span></div>
+        <div className="tank-vol">{Math.round(tank.reading?.volume_liters ?? 0).toLocaleString()} L</div>
+      </div>
+    </div>
+  );
+};
 
-  async function loadTanks() {
-    const tanks = await fetch('/api/tanks').then(r => r.json());
-    document.getElementById('tanks-row').innerHTML = tanks.map(renderTank).join('');
-  }
+window.TankViz = TankViz;
+</script>
 
-  async function loadHistory(tankId, canvasId, color) {
-    const data = await fetch(`/api/history/${tankId}?days=7`).then(r => r.json());
-    if (!data.length) return;
+<!-- ── components ────────────────────────────────────────────── -->
+<script type="text/babel">
+const fmt = (n, d = 0) => n == null ? "—" : Number(n).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
 
-    const labels = data.map(d => {
-      const t = new Date(d.time);
-      return `${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:00`;
-    });
-    const values = data.map(d => d.value);
+const Heatmap = ({ data, accent }) => {
+  if (!data || !data.length) return null;
+  const max = Math.max(...data.map(d => d.liters), 1);
+  const weeks = [];
+  let week = new Array(7).fill(null);
+  const firstDate = new Date(data[0].date);
+  const firstDay = firstDate.getDay();
+  for (let i = 0; i < firstDay; i++) week[i] = { empty: true };
 
-    if (!charts[tankId]) {
-      const ctx = document.getElementById(canvasId).getContext('2d');
-      charts[tankId] = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [{ label: 'Volume (L)', data: values,
-            borderColor: color, backgroundColor: color.replace(')', ',0.1)').replace('rgb', 'rgba'),
-            tension: 0.3, pointRadius: 2, fill: true }]
-        },
-        options: {
-          responsive: true, animation: false,
-          scales: {
-            x: { ticks: { color: '#8892a4', maxTicksLimit: 8 }, grid: { color: '#2a2d3e' } },
-            y: { ticks: { color: '#8892a4' }, grid: { color: '#2a2d3e' }, beginAtZero: true }
-          },
-          plugins: { legend: { display: false } }
-        }
-      });
-    } else {
-      charts[tankId].data.labels = labels;
-      charts[tankId].data.datasets[0].data = values;
-      charts[tankId].update('none');
+  data.forEach(d => {
+    const day = new Date(d.date).getDay();
+    week[day] = d;
+    if (day === 6) { weeks.push(week); week = new Array(7).fill(null); }
+  });
+  if (week.some(c => c)) weeks.push(week);
+
+  const intensity = (l) => l == null ? 0 : Math.min(1, l / max);
+
+  const months = [];
+  let lastMonth = -1;
+  weeks.forEach((w, wi) => {
+    const firstReal = w.find(c => c && !c.empty);
+    if (firstReal) {
+      const m = new Date(firstReal.date).getMonth();
+      if (m !== lastMonth) {
+        months.push({ wi, label: new Date(firstReal.date).toLocaleString("en", { month: "short" }) });
+        lastMonth = m;
+      }
     }
+  });
+
+  return (
+    <div className="heatmap">
+      <div className="heatmap-months">
+        {months.map((m, i) => (
+          <span key={i} className="hm-month" style={{ left: `${m.wi * 16}px` }}>{m.label}</span>
+        ))}
+      </div>
+      <div className="heatmap-body">
+        <div className="heatmap-days">
+          {["M", "W", "F"].map((d, i) => (
+            <span key={d} className="hm-day" style={{ top: `${i * 32 + 16}px` }}>{d}</span>
+          ))}
+        </div>
+        <div className="heatmap-grid">
+          {weeks.map((w, wi) => (
+            <div key={wi} className="hm-week">
+              {w.map((cell, di) => {
+                if (!cell || cell.empty) return <div key={di} className="hm-cell hm-empty" />;
+                const i = intensity(cell.liters);
+                return (
+                  <div key={di} className="hm-cell"
+                    style={{ background: i === 0 ? "var(--surface-2)" : `color-mix(in oklch, ${accent} ${10 + i * 90}%, var(--surface-2))` }}
+                    title={`${cell.date} — ${cell.liters.toLocaleString()} L`}
+                  />
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="heatmap-legend">
+        <span>Less</span>
+        {[0.1, 0.3, 0.5, 0.75, 1].map(i => (
+          <div key={i} className="hm-legend-cell" style={{ background: `color-mix(in oklch, ${accent} ${10 + i * 90}%, var(--surface-2))` }} />
+        ))}
+        <span>More</span>
+        <span className="hm-max">peak {Math.round(max).toLocaleString()} L</span>
+      </div>
+    </div>
+  );
+};
+
+const AlertBanner = ({ tanks }) => {
+  const lows = tanks.filter(t => (t.reading?.level_pct ?? 100) <= (t.low_threshold_pct ?? 20));
+  if (!lows.length) return null;
+  return (
+    <div className="alert-banner" role="alert">
+      <span className="alert-dot" />
+      <strong>Low water alert</strong>
+      <span className="alert-text">
+        {lows.map(t => `${t.name} at ${(t.reading?.level_pct ?? 0).toFixed(1)}%`).join(" · ")}
+      </span>
+      <button className="alert-cta">Acknowledge</button>
+    </div>
+  );
+};
+
+const SourceToggle = ({ tank, onSwitch }) => {
+  if (!tank.sources || tank.sources.length < 2) return null;
+  return (
+    <div className="source-toggle">
+      <span className="source-label">Active source</span>
+      <div className="source-pills">
+        {tank.sources.map(s => (
+          <button key={s}
+            className={`source-pill ${tank.active_source === s ? "active" : ""}`}
+            onClick={() => onSwitch(tank.id, s)}>
+            {s === "rain" ? "🌧 Rain" : s === "mains" ? "🚰 Mains" : s}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const Stat = ({ label, value, unit, sub, trend }) => (
+  <div className="stat">
+    <div className="stat-label">{label}</div>
+    <div className="stat-value">
+      <span className="stat-num">{value}</span>
+      {unit && <span className="stat-unit">{unit}</span>}
+    </div>
+    {sub && <div className="stat-sub">
+      {trend != null && <span className={`trend trend-${trend > 0 ? "up" : "down"}`}>
+        {trend > 0 ? "▲" : "▼"} {Math.abs(trend)}%
+      </span>}
+      {sub}
+    </div>}
+  </div>
+);
+
+const TankCard = ({ tank, accent, vizStyle, density, onSwitch }) => {
+  const pct = tank.reading?.level_pct ?? 0;
+  const low = tank.low_threshold_pct ?? 20;
+  const status = pct <= low ? "danger" : pct <= low * 1.5 ? "warn" : "ok";
+  const trend = tank.today_consumption_l && tank.avg_consumption_l
+    ? Math.round((tank.today_consumption_l - tank.avg_consumption_l) / tank.avg_consumption_l * 100)
+    : null;
+  const vizHeight = density === "compact" ? 220 : density === "spacious" ? 340 : 280;
+  const pump = tank.pump || { name: "—", running: false, runtime_today_min: 0 };
+  const sensor = tank.sensor || { battery_pct: null, last_seen_min: null };
+
+  return (
+    <article className={`tank-card status-${status} density-${density}`}>
+      <header className="tank-head">
+        <div>
+          <div className="tank-eyebrow">
+            <span className={`status-dot status-${status}`} />
+            {status === "ok" ? "Healthy" : status === "warn" ? "Watch" : "Low"}
+            <span className="tank-id">· {tank.id.toUpperCase()}</span>
+          </div>
+          <h2 className="tank-name">{tank.name}</h2>
+          <div className="tank-cap">
+            {(tank.capacity_liters / 1000).toFixed(1)} m³ · {pump.name}
+          </div>
+        </div>
+        <SourceToggle tank={tank} onSwitch={onSwitch} />
+      </header>
+
+      <div className="tank-body">
+        <TankViz tank={tank} vizStyle={vizStyle} accent={accent} height={vizHeight} />
+        <div className="tank-stats">
+          <Stat label="Today's use" value={fmt(tank.today_consumption_l)} unit="L" sub="vs 7d avg" trend={trend} />
+          <Stat label="Drain rate" value={fmt(tank.rate_lph, 1)} unit="L/h" sub="rolling 24h" />
+          <Stat label="Days left" value={tank.days_left ? fmt(tank.days_left, 1) : "—"} unit="d" sub="at current rate" />
+          <Stat label="Water depth" value={fmt(tank.reading?.level_cm)} unit="cm"
+            sub={tank.reading?.usable_depth_cm ? `of ${Math.round(tank.reading.usable_depth_cm)} cm` : ""} />
+        </div>
+      </div>
+
+      <footer className="tank-foot">
+        <div className="foot-row">
+          <span className={`pump-state ${pump.running ? "on" : "off"}`}>
+            <span className="pump-dot" />
+            Pump {pump.running ? "running" : "idle"}
+          </span>
+          <span className="foot-meta">{pump.runtime_today_min} min today</span>
+        </div>
+        <div className="foot-row">
+          <span className="sensor-meta">
+            🔋 {sensor.battery_pct != null ? `${sensor.battery_pct}%` : "—"}
+          </span>
+          <span className="foot-meta">
+            {sensor.last_seen_min != null ? `updated ${sensor.last_seen_min}m ago` : "no recent reading"}
+          </span>
+        </div>
+      </footer>
+    </article>
+  );
+};
+
+window.Heatmap = Heatmap;
+window.AlertBanner = AlertBanner;
+window.SourceToggle = SourceToggle;
+window.Stat = Stat;
+window.TankCard = TankCard;
+</script>
+
+<!-- ── app ───────────────────────────────────────────────────── -->
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+const SUMMARY_ICONS = {
+  source: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 2 C 8 8 6 12 6 16 a 6 6 0 0 0 12 0 C 18 12 16 8 12 2 z" />
+    </svg>
+  ),
+  pump: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="4" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+    </svg>
+  ),
+  rate: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 17l6-6 4 4 8-8" /><path d="M14 7h7v7" />
+    </svg>
+  ),
+  total: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="4" y="4" width="16" height="16" rx="2" /><path d="M9 9h6v6H9z" />
+    </svg>
+  ),
+};
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "vibe": "calm",
+  "theme": "light",
+  "accent": "#1d8fb0",
+  "vizStyle": "realistic",
+  "density": "comfortable",
+  "showAlertDemo": false
+}/*EDITMODE-END*/;
+
+function App() {
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const [tanks, setTanks] = useState([]);
+  const [consumption, setConsumption] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchTanks = useCallback(async () => {
+    try {
+      const res = await fetch('/api/tanks');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setTanks(data);
+      setError(null);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchConsumption = useCallback(async () => {
+    try {
+      const res = await fetch('/api/consumption?days=90');
+      if (!res.ok) return;
+      const data = await res.json();
+      setConsumption(data);
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => {
+    fetchTanks();
+    fetchConsumption();
+    const iv = setInterval(fetchTanks, 30000);
+    return () => clearInterval(iv);
+  }, [fetchTanks, fetchConsumption]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-vibe", tweaks.vibe);
+    document.documentElement.setAttribute("data-theme", tweaks.theme);
+    document.documentElement.style.setProperty("--accent", tweaks.accent);
+  }, [tweaks.vibe, tweaks.theme, tweaks.accent]);
+
+  const switchSource = async (tankId, source) => {
+    try {
+      const res = await fetch(`/api/source/${tankId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source }),
+      });
+      if (res.ok) {
+        setTanks(prev => prev.map(t => t.id === tankId ? { ...t, active_source: source } : t));
+      }
+    } catch (e) {
+      console.error('Source switch failed:', e);
+    }
+  };
+
+  const displayTanks = tweaks.showAlertDemo
+    ? tanks.map(t => t.id === "tank1"
+        ? { ...t, reading: { ...t.reading, level_pct: 12.4, volume_liters: 620 } }
+        : t)
+    : tanks;
+
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="spinner" />
+        <div className="msg">Loading water monitor…</div>
+      </div>
+    );
   }
 
-  async function switchSource(tankId, source) {
-    await fetch(`/api/source/${tankId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ source })
-    });
-    refresh();
-  }
+  const totalVol = displayTanks.reduce((s, t) => s + (t.reading?.volume_liters ?? 0), 0);
+  const totalCap = displayTanks.reduce((s, t) => s + t.capacity_liters, 0);
+  const combinedPct = totalCap > 0 ? (totalVol / totalCap) * 100 : 0;
+  const minDays = displayTanks.length
+    ? Math.min(...displayTanks.map(t => t.days_left ?? 999))
+    : null;
+  const todayUse = displayTanks.reduce((s, t) => s + (t.today_consumption_l ?? 0), 0);
+  const avgUse = displayTanks.reduce((s, t) => s + (t.avg_consumption_l ?? 0), 0);
+  const useTrend = avgUse > 0 ? Math.round((todayUse - avgUse) / avgUse * 100) : null;
+  const tank2 = displayTanks.find(t => t.id === "tank2");
 
-  async function refresh() {
-    await Promise.all([
-      loadTanks(),
-      loadHistory('tank1', 'chart-tank1', 'rgb(6,182,212)'),
-      loadHistory('tank2', 'chart-tank2', 'rgb(59,130,246)'),
-    ]);
-  }
+  const heatTotal = consumption.reduce((s, d) => s + d.liters, 0);
+  const heatAvg = consumption.length > 0 ? Math.round(heatTotal / consumption.length) : 0;
+  const hasAnyReading = displayTanks.some(t => t.reading && t.reading.time);
+  const influxOk = hasAnyReading && !error;
+  const mqttState = hasAnyReading ? "telemetry" : "prototype";
 
-  refresh();
-  setInterval(refresh, 30000);
+  return (
+    <div className="app" data-screen-label="01 Dashboard">
+      <header className="topbar">
+        <div className="brand">
+          <div className="brand-mark" aria-hidden="true" />
+          <div>
+            <div className="brand-title">Water Monitor</div>
+            <div className="brand-sub">Kigali · Home Automation</div>
+          </div>
+        </div>
+        <div className="topbar-right">
+          <span className="live-pill">Live · 30s</span>
+          <button className="icon-btn" aria-label="Refresh" title="Refresh" onClick={fetchTanks}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 12a9 9 0 1 1-3-6.7" /><path d="M21 4v5h-5" />
+            </svg>
+          </button>
+          <button className="icon-btn" aria-label="Toggle theme" title="Toggle theme"
+            onClick={() => setTweak("theme", tweaks.theme === "light" ? "dark" : "light")}>
+            {tweaks.theme === "light"
+              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+              : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>}
+          </button>
+        </div>
+      </header>
+
+      {error && <div className="error-banner">⚠ API error: {error} — data may be stale</div>}
+      <AlertBanner tanks={displayTanks} />
+
+      <section className="summary">
+        <div className="summary-tile">
+          <div className="eyebrow">{SUMMARY_ICONS.total} Combined storage</div>
+          <div className="big mono">{Math.round(combinedPct)}<small>%</small></div>
+          <div className="sub">{Math.round(totalVol).toLocaleString()} of {(totalCap / 1000).toFixed(1)}k L</div>
+        </div>
+        <div className="summary-tile">
+          <div className="eyebrow">{SUMMARY_ICONS.source} Tank 2 source</div>
+          <div className="big" style={{ display: "flex", alignItems: "baseline", gap: 8, textTransform: "capitalize" }}>
+            {tank2?.active_source ?? "—"}
+            {tank2?.reading?.time && <small style={{ color: "var(--accent)" }}>● live</small>}
+          </div>
+          <div className="sub">source configurable</div>
+        </div>
+        <div className="summary-tile">
+          <div className="eyebrow">{SUMMARY_ICONS.rate} Today's use</div>
+          <div className="big mono">{todayUse > 0 ? todayUse.toLocaleString() : "—"}<small>L</small></div>
+          <div className="sub">
+            {useTrend != null && (
+              <span className={`trend trend-${useTrend > 0 ? "up" : "down"}`}>
+                {useTrend > 0 ? "▲" : "▼"} {Math.abs(useTrend)}%
+              </span>
+            )}
+            {avgUse > 0 ? ` vs 7-day avg (${avgUse.toLocaleString()} L)` : "no baseline yet"}
+          </div>
+        </div>
+        <div className="summary-tile">
+          <div className="eyebrow">{SUMMARY_ICONS.pump} Days remaining</div>
+          <div className="big mono">
+            {minDays != null && minDays < 999 ? minDays.toFixed(1) : "—"}<small>d</small>
+          </div>
+          <div className="sub">at current consumption</div>
+        </div>
+      </section>
+
+      <section className="tanks-grid">
+        {displayTanks.map(tank => (
+          <TankCard key={tank.id} tank={tank} accent={tweaks.accent}
+            vizStyle={tweaks.vizStyle} density={tweaks.density} onSwitch={switchSource} />
+        ))}
+      </section>
+
+      <section className="bottom-grid">
+        <div className="heatmap-card">
+          <div className="heatmap-head">
+            <div>
+              <h3>Daily consumption</h3>
+              <div className="sub">90 days · combined L/day across both tanks</div>
+            </div>
+            {consumption.length > 0 && (
+              <div className="heatmap-totals">
+                <div>
+                  <strong>{heatTotal.toLocaleString()}</strong>
+                  90-day total (L)
+                </div>
+                <div>
+                  <strong>{heatAvg.toLocaleString()}</strong>
+                  avg / day
+                </div>
+              </div>
+            )}
+          </div>
+          {consumption.length > 0
+            ? <Heatmap data={consumption} accent={tweaks.accent} />
+            : <div style={{ color: "var(--muted)", fontSize: 12, fontFamily: "var(--font-mono)", padding: "24px 0" }}>
+                No consumption history yet — data appears here after the collector has been running for a few days.
+              </div>
+          }
+        </div>
+
+        <div className="system-panel">
+          <h3>System</h3>
+          <div className="system-rows">
+            <div className="system-row">
+              <div>
+                <div className="lbl">MQTT broker</div>
+                <div className="val">home/water/#</div>
+              </div>
+              <span className={`pill ${hasAnyReading ? "ok" : "warn"}`}>{mqttState}</span>
+            </div>
+            <div className="system-row">
+              <div>
+                <div className="lbl">InfluxDB</div>
+                <div className="val">water_tank · 7d</div>
+              </div>
+              <span className={`pill ${influxOk ? "ok" : "warn"}`}>{influxOk ? "healthy" : (error ? "error" : "no data")}</span>
+            </div>
+            {displayTanks[0] && (
+              <div className="system-row">
+                <div>
+                  <div className="lbl">Tank 1 sensor</div>
+                  <div className="val">
+                    {displayTanks[0].sensor?.battery_pct != null
+                      ? `${displayTanks[0].sensor.battery_pct}% battery`
+                      : "no reading"}
+                  </div>
+                </div>
+                <span className={`pill ${displayTanks[0].sensor?.last_seen_min != null ? "ok" : "warn"}`}>
+                  {displayTanks[0].sensor?.last_seen_min != null
+                    ? `${displayTanks[0].sensor.last_seen_min}m ago`
+                    : "—"}
+                </span>
+              </div>
+            )}
+            {displayTanks[1] && (
+              <div className="system-row">
+                <div>
+                  <div className="lbl">Tank 2 sensor</div>
+                  <div className="val">
+                    {displayTanks[1].sensor?.battery_pct != null
+                      ? `${displayTanks[1].sensor.battery_pct}% battery`
+                      : "no reading"}
+                  </div>
+                </div>
+                <span className={`pill ${displayTanks[1].sensor?.last_seen_min > 10 ? "warn" : "ok"}`}>
+                  {displayTanks[1].sensor?.last_seen_min != null
+                    ? `${displayTanks[1].sensor.last_seen_min}m ago`
+                    : "—"}
+                </span>
+              </div>
+            )}
+            <div className="system-row">
+              <div>
+                <div className="lbl">Auto-refresh</div>
+                <div className="val">30s polling</div>
+              </div>
+              <span className="pill ok">on</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Theme">
+          <TweakRadio label="Mode" value={tweaks.theme}
+            options={[{value:"light",label:"Light"},{value:"dark",label:"Dark"}]}
+            onChange={v => setTweak("theme", v)} />
+          <TweakRadio label="Vibe" value={tweaks.vibe}
+            options={[{value:"calm",label:"Calm"},{value:"industrial",label:"Industrial"},{value:"soft",label:"Soft"}]}
+            onChange={v => setTweak("vibe", v)} />
+          <TweakColor label="Accent" value={tweaks.accent} onChange={v => setTweak("accent", v)} />
+        </TweakSection>
+        <TweakSection label="Layout">
+          <TweakSelect label="Tank visualization" value={tweaks.vizStyle}
+            options={[
+              {value:"realistic",label:"Realistic + waves"},
+              {value:"dial",label:"Circular dial"},
+              {value:"bar",label:"Abstract bar"},
+            ]}
+            onChange={v => setTweak("vizStyle", v)} />
+          <TweakRadio label="Density" value={tweaks.density}
+            options={[{value:"compact",label:"Compact"},{value:"comfortable",label:"Comfy"},{value:"spacious",label:"Spacious"}]}
+            onChange={v => setTweak("density", v)} />
+        </TweakSection>
+        <TweakSection label="Demo">
+          <TweakToggle label="Trigger low-water alert" value={tweaks.showAlertDemo}
+            onChange={v => setTweak("showAlertDemo", v)} />
+        </TweakSection>
+      </TweaksPanel>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 </script>
 </body>
-</html>
+</html>{% endraw %}
