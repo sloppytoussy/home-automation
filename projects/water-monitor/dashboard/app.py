@@ -299,12 +299,16 @@ def api_consumption():
     return jsonify(daily_consumption_history(days))
 
 
+# This endpoint is intentionally unauthenticated: the dashboard is local-only
+# (home network). If exposed publicly, add a shared-secret or session token.
 @app.route("/api/source/<tank_id>", methods=["POST"])
 def set_source(tank_id: str):
-    """Toggle active source for tank2 between rain and mains."""
-    data = request.get_json()
+    """Set active_source for a specific tank. Rewrites tanks.yaml in-place,
+    preserving all comments, by scoping the replacement to the correct tank block."""
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "JSON body required"}), 400
     source = data.get("source", "")
-    cfg_text = CONFIG_PATH.read_text()
 
     tanks = load_tanks()
     tank = next((t for t in tanks if t["id"] == tank_id), None)
@@ -313,13 +317,24 @@ def set_source(tank_id: str):
     if source not in tank.get("sources", []):
         return jsonify({"error": f"invalid source '{source}'"}), 400
 
-    new_text = re.sub(
-        r"(active_source:\s*)\S+",
-        f"\\g<1>{source}",
-        cfg_text,
-        count=1,
-    )
-    CONFIG_PATH.write_text(new_text)
+    cfg_text = CONFIG_PATH.read_text()
+    lines = cfg_text.splitlines(keepends=True)
+    in_target = False
+    replaced = False
+    for i, line in enumerate(lines):
+        if re.match(rf"\s+-\s+id:\s+{re.escape(tank_id)}\s*$", line):
+            in_target = True
+        elif in_target and re.match(r"\s+-\s+id:\s+\S+", line):
+            break  # entered a different tank block
+        if in_target and re.match(r"\s+active_source:\s+\S+", line):
+            lines[i] = re.sub(r"(active_source:\s+)\S+", rf"\g<1>{source}", line)
+            replaced = True
+            break
+
+    if not replaced:
+        return jsonify({"error": "active_source field not present for this tank"}), 422
+
+    CONFIG_PATH.write_text("".join(lines))
     return jsonify({"tank_id": tank_id, "active_source": source})
 
 
