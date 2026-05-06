@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock, call
 from collector.notifier import (
     Notifier, EmailNotifier, SMSNotifier, SyslogNotifier
 )
@@ -137,6 +137,78 @@ class TestEmailNotifier:
         call_args = mock_server.send_message.call_args
         sent_message = call_args[0][0]
         assert "CRITICAL" in sent_message["Subject"]
+
+    @patch("time.sleep")
+    @patch("smtplib.SMTP")
+    def test_email_send_with_retry_on_transient_failure(self, mock_smtp, mock_sleep, critical_alert):
+        """Email send should retry on transient SMTP errors."""
+        mock_server = MagicMock()
+        # First call fails with transient error, second succeeds
+        mock_smtp.return_value.__enter__.return_value = mock_server
+        mock_server.send_message.side_effect = [
+            TimeoutError("Connection timeout"),
+            None,  # Success on retry
+        ]
+
+        notifier = EmailNotifier(
+            smtp_host="smtp.example.com",
+            smtp_port=587,
+            from_address="alerts@example.com",
+            to_addresses=["admin@example.com"],
+        )
+
+        result = notifier.send(critical_alert, max_retries=2)
+        assert result is True
+        # Should have slept once between retries (2^0 = 1 second)
+        mock_sleep.assert_called_once_with(1)
+        # Should have called send_message twice (once failed, once succeeded)
+        assert mock_server.send_message.call_count == 2
+
+    @patch("time.sleep")
+    @patch("smtplib.SMTP")
+    def test_email_send_with_exponential_backoff(self, mock_smtp, mock_sleep, critical_alert):
+        """Email send should use exponential backoff for retries."""
+        mock_server = MagicMock()
+        # Fail twice with transient errors, succeed on third attempt
+        mock_smtp.return_value.__enter__.return_value = mock_server
+        mock_server.send_message.side_effect = [
+            OSError("Network error"),
+            OSError("Network error"),
+            None,  # Success on third attempt
+        ]
+
+        notifier = EmailNotifier(
+            smtp_host="smtp.example.com",
+            smtp_port=587,
+            from_address="alerts@example.com",
+            to_addresses=["admin@example.com"],
+        )
+
+        result = notifier.send(critical_alert, max_retries=2)
+        assert result is True
+        # Should have slept with exponential backoff: 2^0=1s, 2^1=2s
+        sleep_calls = [call(1), call(2)]
+        mock_sleep.assert_has_calls(sleep_calls)
+
+    @patch("smtplib.SMTP")
+    def test_email_send_exhausts_retries(self, mock_smtp, critical_alert):
+        """Email send should fail after exhausting retries."""
+        mock_server = MagicMock()
+        # All attempts fail
+        mock_smtp.return_value.__enter__.return_value = mock_server
+        mock_server.send_message.side_effect = TimeoutError("Persistent timeout")
+
+        notifier = EmailNotifier(
+            smtp_host="smtp.example.com",
+            smtp_port=587,
+            from_address="alerts@example.com",
+            to_addresses=["admin@example.com"],
+        )
+
+        result = notifier.send(critical_alert, max_retries=1)
+        assert result is False
+        # Should have attempted 2 times (max_retries=1 + initial attempt)
+        assert mock_server.send_message.call_count == 2
 
 
 class TestSMSNotifier:

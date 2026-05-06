@@ -289,3 +289,41 @@ class TestConfigValidator:
             "num_sources": "multiple",
         }
         ConfigValidator.validate_tank(tank_cfg)  # Should not raise
+
+    def test_invalid_threshold_relationship_low_greater_than_full(self):
+        """low_threshold should be < full_threshold."""
+        tank_cfg = {
+            "id": "tank1",
+            "depth_cm": 180,
+            "capacity_liters": 5000,
+            "overflow_handling": "no_outlet",
+            "low_threshold_pct": 90,
+            "full_threshold_pct": 80,
+        }
+        with pytest.raises(ConfigValidationError, match="low_threshold_pct.*must be <.*full_threshold_pct"):
+            ConfigValidator.validate_tank(tank_cfg)
+
+    def test_invalid_threshold_relationship_equal(self):
+        """low_threshold should not equal full_threshold."""
+        tank_cfg = {
+            "id": "tank1",
+            "depth_cm": 180,
+            "capacity_liters": 5000,
+            "overflow_handling": "no_outlet",
+            "low_threshold_pct": 75,
+            "full_threshold_pct": 75,
+        }
+        with pytest.raises(ConfigValidationError, match="low_threshold_pct.*must be <.*full_threshold_pct"):
+            ConfigValidator.validate_tank(tank_cfg)
+
+    def test_valid_threshold_relationship(self):
+        """Valid threshold relationship should pass."""
+        tank_cfg = {
+            "id": "tank1",
+            "depth_cm": 180,
+            "capacity_liters": 5000,
+            "overflow_handling": "no_outlet",
+            "low_threshold_pct": 20,
+            "full_threshold_pct": 95,
+        }
+        ConfigValidator.validate_tank(tank_cfg)  # Should not raise

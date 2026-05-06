@@ -1,6 +1,7 @@
 import logging
 import smtplib
 import syslog
+import time
 from abc import ABC, abstractmethod
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -41,18 +42,17 @@ class EmailNotifier(NotificationChannel):
         self.username = username
         self.password = password
 
-    def send(self, alert: OverflowAlert) -> bool:
-        """Send alert via email."""
-        try:
-            msg = MIMEMultipart()
-            msg["From"] = self.from_address
-            msg["To"] = ", ".join(self.to_addresses)
+    def send(self, alert: OverflowAlert, max_retries: int = 2) -> bool:
+        """Send alert via email with exponential backoff retry."""
+        msg = MIMEMultipart()
+        msg["From"] = self.from_address
+        msg["To"] = ", ".join(self.to_addresses)
 
-            # Safe subject line: extract first line, limit length
-            first_line = alert.message.split('\n')[0].split(':')[0][:60]
-            msg["Subject"] = f"[{alert.severity.value}] {alert.tank_id}: {first_line}"
+        # Safe subject line: extract first line, limit length
+        first_line = alert.message.split('\n')[0].split(':')[0][:60]
+        msg["Subject"] = f"[{alert.severity.value}] {alert.tank_id}: {first_line}"
 
-            body = f"""
+        body = f"""
 Alert Severity: {alert.severity.value}
 Tank ID: {alert.tank_id}
 Overflow Handling: {alert.overflow_handling}
@@ -62,28 +62,46 @@ Action: {alert.action.value}
 Message:
 {alert.message}
 """
-            msg.attach(MIMEText(body, "plain"))
+        msg.attach(MIMEText(body, "plain"))
 
-            with smtplib.SMTP(
-                self.smtp_host, self.smtp_port, timeout=self.SMTP_TIMEOUT_S
-            ) as server:
-                if self.username and self.password:
-                    server.starttls(timeout=self.SMTP_TIMEOUT_S)
-                    server.login(self.username, self.password)
-                server.send_message(msg)
+        for attempt in range(max_retries + 1):
+            try:
+                with smtplib.SMTP(
+                    self.smtp_host, self.smtp_port, timeout=self.SMTP_TIMEOUT_S
+                ) as server:
+                    if self.username and self.password:
+                        server.starttls(timeout=self.SMTP_TIMEOUT_S)
+                        server.login(self.username, self.password)
+                    server.send_message(msg)
 
-            log.info("[%s] Email alert sent (recipients=%d)", alert.tank_id, len(self.to_addresses))
-            return True
+                log.info("[%s] Email alert sent (recipients=%d)", alert.tank_id, len(self.to_addresses))
+                return True
 
-        except smtplib.SMTPException as e:
-            log.error("[%s] SMTP error: %s", alert.tank_id, e)
-            return False
-        except TimeoutError as e:
-            log.error("[%s] SMTP timeout: %s", alert.tank_id, e)
-            return False
-        except Exception as e:
-            log.error("[%s] Failed to send email: %s", alert.tank_id, e)
-            return False
+            except (smtplib.SMTPServerDisconnected, TimeoutError, OSError) as e:
+                if attempt < max_retries:
+                    backoff_s = 2 ** attempt
+                    log.warning(
+                        "[%s] Transient SMTP error (attempt %d/%d): %s, "
+                        "retrying in %ds",
+                        alert.tank_id, attempt + 1, max_retries + 1, e, backoff_s
+                    )
+                    time.sleep(backoff_s)
+                    continue
+                else:
+                    log.error(
+                        "[%s] Failed to send email after %d attempts: %s",
+                        alert.tank_id, max_retries + 1, e
+                    )
+                    return False
+
+            except smtplib.SMTPException as e:
+                log.error("[%s] Non-retryable SMTP error: %s", alert.tank_id, e)
+                return False
+            except Exception as e:
+                log.error("[%s] Failed to send email: %s", alert.tank_id, e)
+                return False
+
+        return False
 
 
 class SMSNotifier(NotificationChannel):

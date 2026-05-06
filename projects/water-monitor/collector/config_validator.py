@@ -94,6 +94,16 @@ class ConfigValidator:
                     f"Tank {tank_cfg['id']}: full_threshold_pct must be 0-100"
                 )
 
+        # Validate threshold relationship (low < full)
+        if "low_threshold_pct" in tank_cfg and "full_threshold_pct" in tank_cfg:
+            low = float(tank_cfg["low_threshold_pct"])
+            full = float(tank_cfg["full_threshold_pct"])
+            if low >= full:
+                raise ConfigValidationError(
+                    f"Tank {tank_cfg['id']}: low_threshold_pct ({low}%) must be < "
+                    f"full_threshold_pct ({full}%)"
+                )
+
     @staticmethod
     def validate_config(config: dict) -> None:
         """
