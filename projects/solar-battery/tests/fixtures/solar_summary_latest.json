@@ -1,0 +1,19 @@
+{
+  "time": "2026-05-06T23:55:00+00:00",
+  "portal_id": "a1b2c3d4e5f6",
+  "device": "cerbo",
+  "source": "victron_cerbo",
+  "pv_power_w": 0.0,
+  "pv_yield_today_kwh": 6.185,
+  "battery_soc_pct": 26.9,
+  "battery_power_w": -278.2,
+  "battery_voltage_v": 23.28,
+  "battery_current_a": -11.95,
+  "grid_power_w": 0.0,
+  "ac_load_w": 278.2,
+  "inverter_output_w": 275.2,
+  "mppt_state": 0,
+  "mppt_state_label": "Off",
+  "data_available": true,
+  "last_updated": "2026-05-06T23:55:00+00:00"
+}
