@@ -79,6 +79,10 @@ class MQTTWaterCollector:
                     overflow_magnitude, overflow_handling,
                 )
 
+            # Note: Overflow metadata is passed to writer for InfluxDB storage.
+            # Alert generation is handled by separate OverflowAlerter service
+            # (wired in main.py via overflow_alert_callback).
+
             source = tank_cfg.get("active_source", tank_cfg["sources"][0])
             self._writer.write_reading(
                 reading=reading,

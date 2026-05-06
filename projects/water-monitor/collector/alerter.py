@@ -89,7 +89,7 @@ class OverflowAlerter:
         Returns:
             OverflowAlert if alert should be generated, None otherwise
         """
-        tank_id = tank_cfg["id"]
+        tank_id = tank_cfg.get("id", "UNKNOWN")
 
         if not overflow_detected:
             return None

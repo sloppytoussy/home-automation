@@ -36,7 +36,8 @@ class TestWaterWriter:
 
     def test_write_reading_normal_no_overflow(self, mock_writer, sample_reading):
         """Normal reading without overflow should write basic data."""
-        mock_writer.write_reading(sample_reading, source="mains")
+        result = mock_writer.write_reading(sample_reading, source="mains")
+        assert result is True
 
         mock_writer._write.assert_called_once()
         points = mock_writer._write.call_args[0][0]
@@ -58,7 +59,7 @@ class TestWaterWriter:
 
     def test_write_reading_with_overflow(self, mock_writer, sample_reading):
         """Reading with overflow should include overflow metadata."""
-        mock_writer.write_reading(
+        result = mock_writer.write_reading(
             sample_reading,
             source="mains",
             overflow_detected=True,
@@ -66,6 +67,7 @@ class TestWaterWriter:
             overflow_handling="no_outlet",
         )
 
+        assert result is True
         mock_writer._write.assert_called_once()
         points = mock_writer._write.call_args[0][0]
         point = points[0]
@@ -79,7 +81,7 @@ class TestWaterWriter:
 
     def test_write_reading_overflow_open_outlet(self, mock_writer, sample_reading):
         """Open outlet overflow should be tagged correctly."""
-        mock_writer.write_reading(
+        result = mock_writer.write_reading(
             sample_reading,
             source="rain",
             overflow_detected=True,
@@ -87,6 +89,7 @@ class TestWaterWriter:
             overflow_handling="open_outlet",
         )
 
+        assert result is True
         mock_writer._write.assert_called_once()
         points = mock_writer._write.call_args[0][0]
         point = points[0]
@@ -97,13 +100,14 @@ class TestWaterWriter:
 
     def test_write_reading_overflow_without_magnitude(self, mock_writer, sample_reading):
         """Overflow detection without magnitude should still work."""
-        mock_writer.write_reading(
+        result = mock_writer.write_reading(
             sample_reading,
             source="mains",
             overflow_detected=True,
             overflow_handling="no_outlet",
         )
 
+        assert result is True
         mock_writer._write.assert_called_once()
         points = mock_writer._write.call_args[0][0]
         point = points[0]
@@ -115,13 +119,14 @@ class TestWaterWriter:
 
     def test_write_reading_overflow_without_handling(self, mock_writer, sample_reading):
         """Overflow without handling specified should still be detected."""
-        mock_writer.write_reading(
+        result = mock_writer.write_reading(
             sample_reading,
             source="mains",
             overflow_detected=True,
             overflow_magnitude=100.0,
         )
 
+        assert result is True
         mock_writer._write.assert_called_once()
         points = mock_writer._write.call_args[0][0]
         point = points[0]
@@ -135,8 +140,9 @@ class TestWaterWriter:
         self, mock_writer, sample_reading
     ):
         """Old calls without overflow params should still work."""
-        mock_writer.write_reading(sample_reading, source="mains")
+        result = mock_writer.write_reading(sample_reading, source="mains")
 
+        assert result is True
         mock_writer._write.assert_called_once()
         points = mock_writer._write.call_args[0][0]
         point = points[0]
@@ -147,8 +153,9 @@ class TestWaterWriter:
 
     def test_write_reading_default_source(self, mock_writer, sample_reading):
         """Reading without source should default to 'unknown'."""
-        mock_writer.write_reading(sample_reading)
+        result = mock_writer.write_reading(sample_reading)
 
+        assert result is True
         mock_writer._write.assert_called_once()
         points = mock_writer._write.call_args[0][0]
         point = points[0]
@@ -157,13 +164,14 @@ class TestWaterWriter:
 
     def test_write_reading_with_critical_flag(self, mock_writer, sample_reading):
         """Critical flag should be passed but not directly affect InfluxDB point."""
-        mock_writer.write_reading(
+        result = mock_writer.write_reading(
             sample_reading,
             source="mains",
             overflow_detected=False,
             is_critical=True,
         )
 
+        assert result is True
         mock_writer._write.assert_called_once()
         points = mock_writer._write.call_args[0][0]
         point = points[0]
@@ -174,7 +182,7 @@ class TestWaterWriter:
 
     def test_write_reading_overflow_magnitude_rounding(self, mock_writer, sample_reading):
         """Overflow magnitude should be rounded to 1 decimal place."""
-        mock_writer.write_reading(
+        result = mock_writer.write_reading(
             sample_reading,
             source="mains",
             overflow_detected=True,
@@ -182,6 +190,7 @@ class TestWaterWriter:
             overflow_handling="no_outlet",
         )
 
+        assert result is True
         mock_writer._write.assert_called_once()
         points = mock_writer._write.call_args[0][0]
         point = points[0]
@@ -190,7 +199,7 @@ class TestWaterWriter:
 
     def test_write_reading_zero_overflow_magnitude(self, mock_writer, sample_reading):
         """Zero overflow magnitude should be handled correctly."""
-        mock_writer.write_reading(
+        result = mock_writer.write_reading(
             sample_reading,
             source="mains",
             overflow_detected=True,
@@ -198,6 +207,7 @@ class TestWaterWriter:
             overflow_handling="no_outlet",
         )
 
+        assert result is True
         mock_writer._write.assert_called_once()
         points = mock_writer._write.call_args[0][0]
         point = points[0]

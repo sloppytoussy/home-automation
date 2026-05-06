@@ -23,6 +23,8 @@ class NotificationChannel(ABC):
 class EmailNotifier(NotificationChannel):
     """Send alerts via SMTP email."""
 
+    SMTP_TIMEOUT_S = 10
+
     def __init__(
         self,
         smtp_host: str,
@@ -45,7 +47,10 @@ class EmailNotifier(NotificationChannel):
             msg = MIMEMultipart()
             msg["From"] = self.from_address
             msg["To"] = ", ".join(self.to_addresses)
-            msg["Subject"] = f"[{alert.severity.value}] {alert.tank_id} - {alert.message.split(':')[0]}"
+
+            # Safe subject line: extract first line, limit length
+            first_line = alert.message.split('\n')[0].split(':')[0][:60]
+            msg["Subject"] = f"[{alert.severity.value}] {alert.tank_id}: {first_line}"
 
             body = f"""
 Alert Severity: {alert.severity.value}
@@ -59,15 +64,23 @@ Message:
 """
             msg.attach(MIMEText(body, "plain"))
 
-            with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
+            with smtplib.SMTP(
+                self.smtp_host, self.smtp_port, timeout=self.SMTP_TIMEOUT_S
+            ) as server:
                 if self.username and self.password:
-                    server.starttls()
+                    server.starttls(timeout=self.SMTP_TIMEOUT_S)
                     server.login(self.username, self.password)
                 server.send_message(msg)
 
             log.info("[%s] Email alert sent (recipients=%d)", alert.tank_id, len(self.to_addresses))
             return True
 
+        except smtplib.SMTPException as e:
+            log.error("[%s] SMTP error: %s", alert.tank_id, e)
+            return False
+        except TimeoutError as e:
+            log.error("[%s] SMTP timeout: %s", alert.tank_id, e)
+            return False
         except Exception as e:
             log.error("[%s] Failed to send email: %s", alert.tank_id, e)
             return False
