@@ -82,7 +82,7 @@ class TestOverflowAlerter:
     def test_critical_alert_no_outlet_overflow(
         self, alerter, tank_cfg_no_outlet, overflow_reading
     ):
-        """no_outlet overflow should generate CRITICAL alert with auto-shutoff."""
+        """no_outlet overflow should generate CRITICAL alert with shutoff action."""
         alert = alerter.check_overflow(
             tank_cfg_no_outlet, overflow_reading, overflow_detected=True
         )
@@ -93,7 +93,7 @@ class TestOverflowAlerter:
         assert alert.action == AlertAction.ALERT_AND_SHUTOFF
         assert alert.is_critical is True
         assert "Float valve failure" in alert.message
-        assert "AUTO-SHUTOFF" in alert.message
+        assert "manual shutoff required" in alert.message
 
     def test_info_alert_open_outlet_overflow(
         self, alerter, tank_cfg_open_outlet, overflow_reading
@@ -279,7 +279,7 @@ class TestOverflowAlerter:
         assert "overflow" in alert.message.lower()
         assert "float valve failure" in alert.message.lower()
         assert "100.0l" in alert.message.lower()
-        assert "auto-shutoff" in alert.message.lower()
+        assert "manual shutoff required" in alert.message.lower()
 
     def test_open_outlet_message_format(
         self, alerter, tank_cfg_open_outlet, overflow_reading

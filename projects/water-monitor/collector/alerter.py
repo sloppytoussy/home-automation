@@ -123,7 +123,7 @@ class OverflowAlerter:
             message = (
                 f"TANK {tank_id} OVERFLOW - Float valve failure detected. "
                 f"Volume exceeded capacity by {overflow_magnitude:.1f}L. "
-                f"AUTO-SHUTOFF valve triggered."
+                f"CRITICAL: Immediate manual shutoff required to prevent flooding."
             )
         elif overflow_handling == "open_outlet":
             message = (

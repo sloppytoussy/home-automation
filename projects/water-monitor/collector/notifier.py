@@ -70,7 +70,7 @@ Message:
                     self.smtp_host, self.smtp_port, timeout=self.SMTP_TIMEOUT_S
                 ) as server:
                     if self.username and self.password:
-                        server.starttls(timeout=self.SMTP_TIMEOUT_S)
+                        server.starttls()
                         server.login(self.username, self.password)
                     server.send_message(msg)
 
