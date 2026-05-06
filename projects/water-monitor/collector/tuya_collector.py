@@ -63,8 +63,31 @@ class TuyaWaterCollector:
             distance_cm = normalise_distance(float(raw_distance), unit)
             reading = compute_reading(tank_cfg, distance_cm)
 
+            # Phase 2: Detect overflow condition
+            overflow_detected = reading.volume_liters > reading.capacity_liters
+            overflow_magnitude = None
+            overflow_handling = None
+
+            if overflow_detected:
+                overflow_magnitude = reading.volume_liters - reading.capacity_liters
+                overflow_handling = tank_cfg.get("overflow_handling", "unknown")
+
+                log.warning(
+                    "[%s] OVERFLOW DETECTED: volume=%.1fL (capacity=%.1fL), "
+                    "magnitude=%.1fL, handling=%s",
+                    tank_id, reading.volume_liters, reading.capacity_liters,
+                    overflow_magnitude, overflow_handling,
+                )
+
             source = tank_cfg.get("active_source", tank_cfg["sources"][0])
-            self._writer.write_reading(reading, source=source)
+            self._writer.write_reading(
+                reading=reading,
+                source=source,
+                overflow_detected=overflow_detected,
+                overflow_magnitude=overflow_magnitude,
+                overflow_handling=overflow_handling,
+                is_critical=tank_cfg.get("is_critical", False),
+            )
             log.info("[%s] dist=%.1fcm level=%.1f%% vol=%.0fL", tank_id, distance_cm, reading.level_pct, reading.volume_liters)
 
             # Battery (optional)
