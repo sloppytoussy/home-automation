@@ -43,6 +43,7 @@ class PowerMQTTCollector:
         self._stop_event = threading.Event()
         self._rest_thread: threading.Thread | None = None
         self._buffer: list[dict[str, Any]] = []
+        self._buffer_lock = threading.Lock()
         self._buffer_limit = int(self._config.get("buffer", {}).get("max_readings", DEFAULT_BUFFER_SIZE))
         self._topic_routes = self._build_topic_routes(self._config["devices"])
         self._client = mqtt.Client(client_id=mqtt_config.get("client_id", "power-dashboard-collector"))
@@ -56,7 +57,8 @@ class PowerMQTTCollector:
 
     @property
     def buffered_count(self) -> int:
-        return len(self._buffer)
+        with self._buffer_lock:
+            return len(self._buffer)
 
     @property
     def subscribed_topics(self) -> list[str]:
@@ -261,9 +263,14 @@ class PowerMQTTCollector:
             )
         except (OSError, RuntimeError, KeyError, ValueError) as exc:
             log.error("InfluxDB write failed", extra={"error": str(exc)})
-            self._append_buffer(reading)
+            with self._buffer_lock:
+                self._append_buffer_locked(reading)
 
     def _append_buffer(self, reading: dict[str, Any]) -> None:
+        with self._buffer_lock:
+            self._append_buffer_locked(reading)
+
+    def _append_buffer_locked(self, reading: dict[str, Any]) -> None:
         if len(self._buffer) >= self._buffer_limit:
             self._buffer.pop(0)
             log.warning("Power reading buffer full; dropping oldest reading")
