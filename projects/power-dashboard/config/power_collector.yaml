@@ -1,0 +1,121 @@
+mqtt:
+  client_id: power-dashboard-collector
+  host_env: MQTT_BROKER_HOST
+  port_env: MQTT_BROKER_PORT
+  default_host: localhost
+  default_port: 1883
+  username_env: MQTT_USERNAME
+  password_env: MQTT_PASSWORD
+  reconnect:
+    max_tries: 5
+    base_delay_seconds: 2
+    max_delay_seconds: 60
+
+buffer:
+  max_readings: 100
+
+influx:
+  measurement: power_readings
+
+tariff:
+  currency: RWF
+  tiers:
+    - name: lifeline
+      start_kwh: 0
+      end_kwh: 20
+      rate_rwf_per_kwh: 89
+    - name: standard
+      start_kwh: 20
+      end_kwh: 50
+      rate_rwf_per_kwh: 310
+    - name: high_usage
+      start_kwh: 50
+      end_kwh: null
+      rate_rwf_per_kwh: 369
+
+devices:
+  - id: shelly-pro-3em-main
+    type: shelly_pro_3em
+    enabled: true
+    source: mqtt
+    topic_patterns:
+      - pattern: shellies/{device_id}/emeter/{channel}/{metric}
+        payload: scalar_float
+        measurement: power_readings
+        metric_fields:
+          power: watts
+          energy: watt_hours
+          voltage: volts
+          current: amps
+          pf: power_factor
+    circuits:
+      - channel: "0"
+        circuit: mains_l1
+        phase: L1
+      - channel: "1"
+        circuit: mains_l2
+        phase: L2
+      - channel: "2"
+        circuit: mains_l3
+        phase: L3
+
+  - id: iotawatt-main
+    type: iotawatt
+    enabled: true
+    source: mqtt
+    topic_patterns:
+      - pattern: iotawatt/{device_id}/sensor/{sensor}/{metric}
+        payload: json_value
+        measurement: power_readings
+        metric_fields:
+          value: watts
+          wh: watt_hours
+    rest:
+      enabled: false
+      base_url_env: IOTAWATT_BASE_URL
+      query_path: /query
+      interval_seconds: 30
+      timeout_seconds: 5
+    circuits:
+      - sensor: mains
+        circuit: mains_total
+        phase: none
+      - sensor: kitchen
+        circuit: kitchen
+        phase: none
+      - sensor: laundry
+        circuit: laundry
+        phase: none
+      - sensor: pump_1
+        circuit: water_pump_1
+        phase: none
+      - sensor: pump_2
+        circuit: water_pump_2
+        phase: none
+      - sensor: lighting
+        circuit: lighting
+        phase: none
+      - sensor: sockets
+        circuit: sockets
+        phase: none
+      - sensor: fridge
+        circuit: fridge
+        phase: none
+      - sensor: freezer
+        circuit: freezer
+        phase: none
+      - sensor: oven
+        circuit: oven
+        phase: none
+      - sensor: office
+        circuit: office
+        phase: none
+      - sensor: bedrooms
+        circuit: bedrooms
+        phase: none
+      - sensor: outdoor
+        circuit: outdoor
+        phase: none
+      - sensor: spare
+        circuit: spare
+        phase: none
