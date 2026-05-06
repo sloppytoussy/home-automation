@@ -7,6 +7,7 @@ from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 
+from .config_validator import ConfigValidator, ConfigValidationError
 from .mqtt_collector import MQTTWaterCollector
 from .tuya_collector import TuyaWaterCollector
 from .writer import WaterWriter
@@ -29,6 +30,14 @@ def load_config() -> dict:
 
 def main() -> None:
     cfg = load_config()
+
+    try:
+        ConfigValidator.validate_config(cfg)
+        ConfigValidator.log_summary(cfg)
+    except ConfigValidationError as e:
+        log.error("Configuration validation failed: %s", e)
+        sys.exit(1)
+
     tanks = cfg["tanks"]
     tuya_devices = cfg.get("tuya_devices", [])
 

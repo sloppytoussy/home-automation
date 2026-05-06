@@ -32,6 +32,37 @@ tanks:
       # Unit the sensor reports in: cm or mm
       unit: cm
 
+    # --- Phase 2: Overflow Detection & Alerting Configuration ---
+    # overflow_handling: How tank handles overflow (REQUIRED for Phase 2+)
+    #   - "no_outlet": Float valve controls fill, tank cannot overflow (failure = alert)
+    #   - "open_outlet": Has 3" outlet below ceiling, safe overflow allowed
+    overflow_handling: "no_outlet"
+
+    # inlet_shutoff: How water inflow is controlled
+    #   - "float_valve": Automatic cutoff when full
+    #   - "manual_valve": Operator controlled
+    inlet_shutoff: "float_valve"
+
+    # num_sources: Number of water sources
+    #   - "single": Only one source (mains only)
+    #   - "multiple": Multiple sources (mains + rain, etc.)
+    num_sources: "single"
+
+    # is_critical: Whether to store overflow history in InfluxDB
+    #   - true: Store overflow events for trend analysis (critical tanks)
+    #   - false: Alert only, no history storage
+    is_critical: true
+
+    # alerting_enabled: Whether to send alerts for this tank
+    #   - true: Send alerts (production mode)
+    #   - false: Log only, no notifications (test mode)
+    alerting_enabled: true
+
+    # alert_severity: Override alert severity (optional)
+    #   Uses detailed levels: DEBUG, INFO, NOTICE, WARNING, ERROR, CRITICAL
+    #   If not set, uses default based on overflow_handling
+    # alert_severity: CRITICAL
+
   - id: tank2
     name: Rainwater / WASAC Tank
     # 1.5m x 2.8m x 3.5m rectangular pool = 14,700 L
@@ -54,6 +85,13 @@ tanks:
     # Active source — toggled manually in the dashboard UI when you switch feeds.
     # Stored in InfluxDB as a tag on each reading.
     active_source: rain       # rain | mains
+
+    # --- Phase 2: Overflow Detection & Alerting Configuration ---
+    overflow_handling: "open_outlet"
+    inlet_shutoff: "float_valve"
+    num_sources: "multiple"
+    is_critical: false
+    alerting_enabled: true
 
 # --- Tuya local API (only needed if sensor.type == tuya) ---
 # Get these from the Tuya IoT Platform developer console or the tinytuya wizard.

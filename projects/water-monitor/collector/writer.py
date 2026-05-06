@@ -19,7 +19,15 @@ class WaterWriter:
     def _write(self, points: list[Point]) -> None:
         self._write_api.write(bucket=self._bucket, org=self._org, record=points)
 
-    def write_reading(self, reading: TankReading, source: str = "unknown") -> None:
+    def write_reading(
+        self,
+        reading: TankReading,
+        source: str = "unknown",
+        overflow_detected: bool = False,
+        overflow_magnitude: float | None = None,
+        overflow_handling: str | None = None,
+        is_critical: bool = False,
+    ) -> None:
         p = (
             Point("water_tank")
             .tag("tank_id", reading.tank_id)
@@ -29,6 +37,17 @@ class WaterWriter:
             .field("level_pct", reading.level_pct)
             .field("volume_liters", reading.volume_liters)
         )
+
+        # Add overflow metadata if detected
+        if overflow_detected:
+            p = p.tag("overflow_detected", "true")
+            if overflow_handling:
+                p = p.tag("overflow_handling", overflow_handling)
+            if overflow_magnitude is not None:
+                p = p.field("overflow_magnitude_liters", round(overflow_magnitude, 1))
+        else:
+            p = p.tag("overflow_detected", "false")
+
         self._write([p])
 
     def write_pump_state(self, tank_id: str, state: str) -> None:
