@@ -8,8 +8,14 @@ from ..collector.pihole import PiHoleClient
 load_dotenv()
 
 app = Flask(__name__)
+log = app.logger
 
 _pihole: PiHoleClient | None = None
+
+
+def service_unavailable(exc: Exception):
+    log.error("InfluxDB error: %s", exc, exc_info=True)
+    return jsonify({"error": "InfluxDB unavailable"}), 503
 
 
 def get_pihole() -> PiHoleClient:
@@ -33,56 +39,56 @@ def index():
 def api_summary():
     try:
         return jsonify(get_pihole().summary())
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception as exc:
+        return service_unavailable(exc)
 
 
 @app.route("/api/top_domains")
 def api_top_domains():
     try:
         return jsonify(get_pihole().top_domains(10))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception as exc:
+        return service_unavailable(exc)
 
 
 @app.route("/api/top_blocked")
 def api_top_blocked():
     try:
         return jsonify(get_pihole().top_blocked(10))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception as exc:
+        return service_unavailable(exc)
 
 
 @app.route("/api/top_clients")
 def api_top_clients():
     try:
         return jsonify(get_pihole().top_clients(10))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception as exc:
+        return service_unavailable(exc)
 
 
 @app.route("/api/query_types")
 def api_query_types():
     try:
         return jsonify(get_pihole().query_types())
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception as exc:
+        return service_unavailable(exc)
 
 
 @app.route("/api/history")
 def api_history():
     try:
         return jsonify(get_pihole().history())
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception as exc:
+        return service_unavailable(exc)
 
 
 @app.route("/api/recent")
 def api_recent():
     try:
         return jsonify(get_pihole().recent_queries(50))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception as exc:
+        return service_unavailable(exc)
 
 
 if __name__ == "__main__":

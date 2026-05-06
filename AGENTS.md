@@ -148,8 +148,8 @@ ALERT_EMAIL_TO
 
 | Branch | Status |
 |---|---|
-| `main` | Clean — PR #2 merged (water-monitor Phase 2, 124 tests) |
-| `feature/power-dashboard-collector` | Power dashboard collector/calculator implementation complete; pending PR |
+| `main` | Cleanup complete — water-monitor Python 3.9 annotations fixed; CodeQL #1–7 resolved |
+| `feature/power-dashboard-collector` | Merged — power dashboard collector/calculator/test suite complete |
 
 ## Active roadmap
 
@@ -167,13 +167,7 @@ ALERT_EMAIL_TO
 ### Water monitor (stabilized — Phase 2 complete)
 - No active work planned.
 
-## Known issues
+## CodeQL status
 
-- **Water monitor Python 3.9 annotation failure is pre-existing on baseline.**
-  On `feature/power-dashboard-collector` with all session work stashed,
-  `.venv/bin/python -m pytest projects/water-monitor/tests/ -v --tb=short`
-  fails during collection because `projects/water-monitor/collector/calculator.py`
-  uses `float | None` without `from __future__ import annotations` under
-  Python 3.9.6. The literal `python -m pytest ...` command cannot run in this
-  shell because `python` is not on `PATH`. Do not patch this on the power
-  dashboard branch; fix it separately on `main` before the next session.
+- Alerts #1–7 resolved on `main`: dashboard JSON error responses no longer
+  expose raw exception messages.
