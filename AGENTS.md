@@ -149,15 +149,15 @@ ALERT_EMAIL_TO
 | Branch | Status |
 |---|---|
 | `main` | Clean — PR #2 merged (water-monitor Phase 2, 124 tests) |
-| `feature/power-dashboard-collector` | Next active branch |
+| `feature/power-dashboard-collector` | Power dashboard collector/calculator implementation complete; pending PR |
 
 ## Active roadmap
 
 ### Power dashboard (current focus)
-- [ ] MQTT collector for Shelly Pro 3EM + IotaWatt (`collector/mqtt_collector.py`)
-- [ ] Tiered rate calculator (`dashboard/calculator.py`)
-- [ ] Calculator API routes (`/api/calculator/*`)
-- [ ] Test suite to 100+ tests
+- [x] MQTT collector for Shelly Pro 3EM + IotaWatt (`collector/mqtt_collector.py`)
+- [x] Tiered rate calculator (`dashboard/calculator.py`)
+- [x] Calculator API routes (`/api/calculator/*`)
+- [x] Test suite to 100+ tests
 
 ### Solar/battery dashboard (next)
 - [ ] Victron Cerbo GX MQTT subscriber
@@ -166,3 +166,14 @@ ALERT_EMAIL_TO
 
 ### Water monitor (stabilized — Phase 2 complete)
 - No active work planned.
+
+## Known issues
+
+- **Water monitor Python 3.9 annotation failure is pre-existing on baseline.**
+  On `feature/power-dashboard-collector` with all session work stashed,
+  `.venv/bin/python -m pytest projects/water-monitor/tests/ -v --tb=short`
+  fails during collection because `projects/water-monitor/collector/calculator.py`
+  uses `float | None` without `from __future__ import annotations` under
+  Python 3.9.6. The literal `python -m pytest ...` command cannot run in this
+  shell because `python` is not on `PATH`. Do not patch this on the power
+  dashboard branch; fix it separately on `main` before the next session.

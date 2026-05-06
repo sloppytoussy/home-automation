@@ -420,5 +420,148 @@ def api_topups():
     return jsonify(topup_history())
 
 
+# ------------------------------------------------------------------
+# Calculator API
+# ------------------------------------------------------------------
+
+POWER_COLLECTOR_CONFIG = Path(__file__).parent.parent / "config" / "power_collector.yaml"
+
+
+def load_power_collector_config() -> dict:
+    with POWER_COLLECTOR_CONFIG.open() as f:
+        return yaml.safe_load(f) or {}
+
+
+def calculator_tiers() -> list[dict]:
+    return load_power_collector_config().get("tariff", {}).get("tiers", [])
+
+
+def calculator_bucket_or_503() -> tuple[str | None, tuple | None]:
+    bucket = influx_bucket()
+    if not bucket:
+        return None, (jsonify({"error": "InfluxDB unavailable"}), 503)
+    return bucket, None
+
+
+@app.route("/api/calculator/bill-estimate", methods=["POST"])
+def api_calculator_bill_estimate():
+    from dashboard.calculator import calculate_tiered_cost
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        result = calculate_tiered_cost(payload.get("kwh"), calculator_tiers())
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify(result)
+
+
+@app.route("/api/calculator/net-consumption")
+def api_calculator_net_consumption():
+    from dashboard.calculator import calculate_net_consumption
+
+    bucket, error_response = calculator_bucket_or_503()
+    if error_response:
+        return error_response
+    try:
+        rows = query_pivot(f'''
+            from(bucket: "{bucket}")
+              |> range(start: -31d)
+              |> filter(fn: (r) => r._measurement == "energy_totals")
+              |> last()
+              |> pivot(rowKey:["_time"], columnKey:["_field"], valueColumn:"_value")
+        ''')
+        row = rows[0] if rows else {}
+        result = calculate_net_consumption(
+            row.get("consumed_kwh", 0.0),
+            row.get("solar_export_kwh", 0.0),
+        )
+    except Exception as exc:
+        return jsonify({"error": f"InfluxDB unavailable: {exc}"}), 503
+    return jsonify(result)
+
+
+@app.route("/api/calculator/load-breakdown")
+def api_calculator_load_breakdown():
+    from dashboard.calculator import load_breakdown
+
+    bucket, error_response = calculator_bucket_or_503()
+    if error_response:
+        return error_response
+    try:
+        rows = query_pivot(f'''
+            from(bucket: "{bucket}")
+              |> range(start: -1h)
+              |> filter(fn: (r) => r._measurement == "power_readings" and r._field == "watts")
+              |> group(columns: ["circuit"])
+              |> last()
+              |> pivot(rowKey:["_time", "circuit"], columnKey:["_field"], valueColumn:"_value")
+              |> group()
+        ''')
+        result = load_breakdown([
+            {"circuit": row.get("circuit"), "watts": row.get("watts", 0.0)}
+            for row in rows
+        ])
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"error": f"InfluxDB unavailable: {exc}"}), 503
+    return jsonify(result)
+
+
+@app.route("/api/calculator/variance")
+def api_calculator_variance():
+    from dashboard.calculator import detect_variance
+
+    manual_arg = request.args.get("manual_kwh")
+    automated_arg = request.args.get("automated_kwh")
+    threshold_arg = request.args.get("threshold_pct", 2.0)
+
+    if manual_arg is not None and automated_arg is not None:
+        try:
+            return jsonify(detect_variance(float(manual_arg), float(automated_arg), float(threshold_arg)))
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
+    bucket, error_response = calculator_bucket_or_503()
+    if error_response:
+        return error_response
+    try:
+        rows = query_pivot(f'''
+            from(bucket: "{bucket}")
+              |> range(start: -31d)
+              |> filter(fn: (r) => r._measurement == "verification_log")
+              |> last()
+              |> pivot(rowKey:["_time"], columnKey:["_field"], valueColumn:"_value")
+        ''')
+        if not rows:
+            return jsonify({"error": "verification data unavailable"}), 503
+        row = rows[0]
+        result = detect_variance(
+            row.get("manual_kwh"),
+            row.get("automated_kwh"),
+            float(threshold_arg),
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"error": f"InfluxDB unavailable: {exc}"}), 503
+    return jsonify(result)
+
+
+@app.route("/api/calculator/projection", methods=["POST"])
+def api_calculator_projection():
+    from dashboard.calculator import project_monthly
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        result = project_monthly(
+            payload.get("daily_kwh", []),
+            int(payload.get("days_in_month", 30)),
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify(result)
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("POWER_DASHBOARD_PORT", 5001)))
