@@ -24,6 +24,7 @@ else:
     pass
 
 app = Flask(__name__)
+log = app.logger
 
 APPLIANCES_CONFIG = Path(__file__).parent.parent / "config" / "appliances.yaml"
 
@@ -443,6 +444,16 @@ def calculator_bucket_or_503() -> tuple[str | None, tuple | None]:
     return bucket, None
 
 
+def calculator_bad_request(exc: ValueError):
+    log.warning("Bad input: %s", exc)
+    return jsonify({"error": "invalid input"}), 400
+
+
+def influx_error_response(exc: Exception):
+    log.error("InfluxDB error: %s", exc, exc_info=True)
+    return jsonify({"error": "InfluxDB unavailable"}), 503
+
+
 @app.route("/api/calculator/bill-estimate", methods=["POST"])
 def api_calculator_bill_estimate():
     from dashboard.calculator import calculate_tiered_cost
@@ -451,7 +462,7 @@ def api_calculator_bill_estimate():
     try:
         result = calculate_tiered_cost(payload.get("kwh"), calculator_tiers())
     except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+        return calculator_bad_request(exc)
     return jsonify(result)
 
 
@@ -475,8 +486,10 @@ def api_calculator_net_consumption():
             row.get("consumed_kwh", 0.0),
             row.get("solar_export_kwh", 0.0),
         )
+    except ValueError as exc:
+        return calculator_bad_request(exc)
     except Exception as exc:
-        return jsonify({"error": f"InfluxDB unavailable: {exc}"}), 503
+        return influx_error_response(exc)
     return jsonify(result)
 
 
@@ -502,9 +515,9 @@ def api_calculator_load_breakdown():
             for row in rows
         ])
     except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+        return calculator_bad_request(exc)
     except Exception as exc:
-        return jsonify({"error": f"InfluxDB unavailable: {exc}"}), 503
+        return influx_error_response(exc)
     return jsonify(result)
 
 
@@ -520,7 +533,7 @@ def api_calculator_variance():
         try:
             return jsonify(detect_variance(float(manual_arg), float(automated_arg), float(threshold_arg)))
         except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
+            return calculator_bad_request(exc)
 
     bucket, error_response = calculator_bucket_or_503()
     if error_response:
@@ -542,9 +555,9 @@ def api_calculator_variance():
             float(threshold_arg),
         )
     except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+        return calculator_bad_request(exc)
     except Exception as exc:
-        return jsonify({"error": f"InfluxDB unavailable: {exc}"}), 503
+        return influx_error_response(exc)
     return jsonify(result)
 
 
@@ -559,7 +572,7 @@ def api_calculator_projection():
             int(payload.get("days_in_month", 30)),
         )
     except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+        return calculator_bad_request(exc)
     return jsonify(result)
 
 

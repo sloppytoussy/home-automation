@@ -261,10 +261,25 @@ class PowerMQTTCollector:
                 tags=reading["tags"],
                 fields=reading["fields"],
             )
-        except (OSError, RuntimeError, KeyError, ValueError) as exc:
-            log.error("InfluxDB write failed", extra={"error": str(exc)})
-            with self._buffer_lock:
-                self._append_buffer_locked(reading)
+            self._drain_buffer()
+        except Exception as exc:
+            log.error("InfluxDB write failed: %s", exc)
+            self._append_buffer(reading)
+
+    def _drain_buffer(self) -> None:
+        with self._buffer_lock:
+            while self._buffer:
+                buffered = self._buffer.pop(0)
+                try:
+                    influx.write_point(
+                        measurement=buffered["measurement"],
+                        tags=buffered["tags"],
+                        fields=buffered["fields"],
+                    )
+                except Exception as exc:
+                    log.error("Buffer drain failed: %s", exc)
+                    self._buffer.insert(0, buffered)
+                    break
 
     def _append_buffer(self, reading: dict[str, Any]) -> None:
         with self._buffer_lock:
