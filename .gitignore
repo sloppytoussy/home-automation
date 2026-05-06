@@ -218,3 +218,5 @@ __marimo__/
 .streamlit/secrets.toml
 .codex/session-*
 .codex/*.log
+.DS_Store
+**/.DS_Store
