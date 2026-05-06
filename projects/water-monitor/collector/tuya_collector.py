@@ -19,10 +19,12 @@ class TuyaWaterCollector:
       3. Copy device_id, ip, local_key into tanks.yaml
     """
 
-    def __init__(self, tank_cfgs: list[dict], tuya_device_cfgs: list[dict], writer: WaterWriter):
+    def __init__(self, tank_cfgs: list[dict], tuya_device_cfgs: list[dict], writer: WaterWriter, alerter=None, notifier=None):
         self._tank_map = {t["id"]: t for t in tank_cfgs if t.get("sensor", {}).get("type") == "tuya"}
         self._devices = {d["tank_id"]: d for d in tuya_device_cfgs}
         self._writer = writer
+        self._alerter = alerter  # Phase 2: optional alerter service
+        self._notifier = notifier  # Phase 2: optional notifier service
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
 
@@ -84,7 +86,7 @@ class TuyaWaterCollector:
             # (wired in main.py via overflow_alert_callback).
 
             source = tank_cfg.get("active_source", tank_cfg["sources"][0])
-            self._writer.write_reading(
+            result = self._writer.write_reading(
                 reading=reading,
                 source=source,
                 overflow_detected=overflow_detected,
@@ -92,6 +94,25 @@ class TuyaWaterCollector:
                 overflow_handling=overflow_handling,
                 is_critical=tank_cfg.get("is_critical", False),
             )
+
+            if not result:
+                log.error("[%s] Failed to write reading to InfluxDB", tank_id)
+
+            # Phase 2: Process overflow alerts
+            if self._alerter and overflow_detected:
+                alert = self._alerter.check_overflow(
+                    tank_cfg=tank_cfg,
+                    reading=reading,
+                    overflow_detected=overflow_detected,
+                    overflow_magnitude=overflow_magnitude,
+                )
+                if alert:
+                    self._alerter.queue_alert(alert)
+                    # Send queued alerts via notifier if available
+                    if self._notifier:
+                        for queued_alert in self._alerter.get_queued_alerts():
+                            self._notifier.send_alert(queued_alert)
+
             log.info("[%s] dist=%.1fcm level=%.1f%% vol=%.0fL", tank_id, distance_cm, reading.level_pct, reading.volume_liters)
 
             # Battery (optional)
