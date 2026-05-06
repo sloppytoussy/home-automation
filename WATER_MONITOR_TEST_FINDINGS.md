@@ -38,19 +38,29 @@ reading = compute_reading(cfg, -10.0)
 ```
 
 **Physical Reality**: 
-This behavior is **correct** and represents actual tank conditions:
-- **Scenario A (Float valve + no outlet)**: Negative distance = float valve failure → ALERT
-- **Scenario B (Multiple sources + open outlet)**: Negative distance = outlet overflow working → NORMAL
-- **Scenario C (Manual control + open outlet)**: Negative distance = operator overflow → NORMAL
+This behavior is **correct** and represents actual tank conditions. Overflow meaning depends entirely on tank configuration:
 
-**Solution**: Configuration-Aware Interpretation
-The calculator correctly reports the overflow condition. The **meaning** depends on tank configuration:
-- `overflow_handling: "no_outlet"` → Error condition (inlet shutoff failure)
-- `overflow_handling: "open_outlet"` → Normal condition (safe outlet working)
+**Configuration-Aware Interpretation** ✅
+The calculator correctly reports the overflow condition (volume > capacity). The **meaning** depends on tank configuration fields:
 
-**No Code Change Needed**: The calculator is pure and configuration-agnostic. Interpretation happens in the collector/alert layer based on `tank_cfg`.
+- `overflow_handling: "no_outlet"` → **Error condition** (inlet shutoff failure—alert)
+  - Float valve failed to close, water above tank top
+  - Tank 1 scenario: WASAC mains with single source and float valve
+  
+- `overflow_handling: "open_outlet"` → **Normal condition** (safe outlet working)
+  - Multiple sources (mains + rain), safe outlet below ceiling
+  - Tank 2 scenario: Rainwater collection with open outlet
+  - Excess water flows out safely, tank shows volume > capacity while draining
 
-**Test Coverage**: `test_reading_beyond_full_capped_at_100_percent` documents this boundary condition with clear physical scenarios.
+**No Code Change Needed**: The calculator is pure and configuration-agnostic. Interpretation happens in the collector/alert layer based on `tank_cfg.overflow_handling`.
+
+**Test Coverage**: `test_reading_beyond_full_capped_at_100_percent` documents this boundary condition with clear physical scenarios and configuration dependencies.
+
+**Phase 1.5 Implementation**: ✅
+- `compute_reading()` docstring: Explains physical reality and configuration-aware interpretation
+- Inline comments: Document why volume is NOT capped (preserves overflow signal)
+- Test docstring: Clarifies Tank 1 (error) vs Tank 2 (normal) scenarios
+- All tests passing with updated documentation
 
 ---
 
@@ -209,9 +219,11 @@ The following behavior is correct and matches the implementation:
 
 ## Recommended Actions (by Priority)
 
-### 1. Decide on volume capping (blocking decision)
-- Review the edge case and decide: Option A or Option B?
-- This determines if code needs to change or if documentation is sufficient
+### ✅ 1. Configuration-Aware Interpretation (COMPLETED)
+- **Decision**: Volume overflow is NOT a bug—it preserves overflow signal
+- **Implementation**: Collector/alert layer interprets based on tank configuration
+- **Status**: Documentation updated in `compute_reading()` and tests
+- **Phase 2+**: Alerter service (already implemented in Phase 2 work) uses `overflow_handling` field
 
 ### 2. Create test infrastructure files (non-blocking)
 - `projects/water-monitor/requirements-test.txt`
@@ -221,9 +233,9 @@ The following behavior is correct and matches the implementation:
 - Add docstring clarification that `rate_lph` is Liters Per Hour
 - This prevents confusion (test suite initially assumed L/day)
 
-### 4. Consider input validation (optional hardening)
-- Add assertions or validation for negative distances if Option B is chosen
-- Add config key validation if config structure can vary
+### 4. Input validation (optional hardening)
+- Negative distances are valid (represent overflow)—no validation needed
+- Config key validation: Already handled in `ConfigValidator` (Phase 2)
 
 ---
 
