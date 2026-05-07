@@ -102,6 +102,26 @@ services:
     depends_on:
       - influxdb
 
+  lighting-collector:
+    build: ./projects/lighting-control
+    container_name: lighting-collector
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - influxdb
+      - mosquitto
+
+  lighting-dashboard:
+    build: ./projects/lighting-control
+    container_name: lighting-dashboard
+    restart: unless-stopped
+    command: ["gunicorn", "-w", "2", "-b", "0.0.0.0:5005", "dashboard.app:app"]
+    ports:
+      - "5005:5005"
+    env_file: .env
+    depends_on:
+      - influxdb
+
 volumes:
   influxdb_data:
   grafana_data:
