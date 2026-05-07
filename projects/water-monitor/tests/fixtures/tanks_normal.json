@@ -1,0 +1,67 @@
+[
+  {
+    "id": "tank1",
+    "name": "WASAC Mains Tank",
+    "capacity_liters": 5000,
+    "sources": [
+      "mains"
+    ],
+    "active_source": "mains",
+    "low_threshold_pct": 20,
+    "full_threshold_pct": 95,
+    "level_pct": 72.0,
+    "volume_liters": 3600.0,
+    "depth_cm": 180.0,
+    "water_depth_cm": 129.6,
+    "drain_rate_lph": 6.8,
+    "days_remaining": 22.1,
+    "todays_use_liters": 142.0,
+    "avg_consumption_liters": 151.5,
+    "status": "normal",
+    "last_updated": "2026-05-06T12:00:00+00:00",
+    "overflow_handling": "no_outlet",
+    "pump": {
+      "name": "Dayliff DDA 1000P",
+      "state": "idle",
+      "runtime_today_min": 18,
+      "last_seen_min": 3
+    },
+    "sensor": {
+      "battery_pct": 87,
+      "last_seen_min": 2
+    }
+  },
+  {
+    "id": "tank2",
+    "name": "Rainwater / WASAC Tank",
+    "capacity_liters": 14700,
+    "sources": [
+      "rain",
+      "mains"
+    ],
+    "active_source": "rain",
+    "low_threshold_pct": 15,
+    "full_threshold_pct": 95,
+    "level_pct": 54.0,
+    "volume_liters": 7938.0,
+    "depth_cm": 350.0,
+    "water_depth_cm": 189.0,
+    "drain_rate_lph": 13.4,
+    "days_remaining": 24.7,
+    "todays_use_liters": 188.0,
+    "avg_consumption_liters": 173.2,
+    "status": "normal",
+    "last_updated": "2026-05-06T12:00:00+00:00",
+    "overflow_handling": "open_outlet",
+    "pump": {
+      "name": "Dayliff DDA 1000P",
+      "state": "idle",
+      "runtime_today_min": 26,
+      "last_seen_min": 4
+    },
+    "sensor": {
+      "battery_pct": 74,
+      "last_seen_min": 3
+    }
+  }
+]
