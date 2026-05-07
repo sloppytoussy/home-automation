@@ -4,7 +4,7 @@ Run from the water-monitor project directory:
   ../.venv/bin/python -m tests.dev_server
 
 Open:
-  http://127.0.0.1:5001
+  http://127.0.0.1:5004
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from flask import Flask, jsonify, render_template, request
 BASE_DIR = Path(__file__).resolve().parent
 FIXTURE_DIR = BASE_DIR / "fixtures"
 TEMPLATE_DIR = BASE_DIR.parent / "dashboard" / "templates"
-DEV_PORT = 5001
+DEV_PORT = 5004
 
 app = Flask(__name__, template_folder=str(TEMPLATE_DIR))
 
