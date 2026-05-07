@@ -102,6 +102,30 @@ services:
     depends_on:
       - influxdb
 
+  lighting-collector:
+    build:
+      context: .
+      dockerfile: projects/lighting-control/Dockerfile
+    container_name: lighting-collector
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - influxdb
+      - mosquitto
+
+  lighting-dashboard:
+    build:
+      context: .
+      dockerfile: projects/lighting-control/Dockerfile
+    container_name: lighting-dashboard
+    restart: unless-stopped
+    command: ["python", "-m", "flask", "--app", "dashboard.app", "run", "--host", "0.0.0.0", "--port", "5005"]
+    ports:
+      - "5005:5005"
+    env_file: .env
+    depends_on:
+      - influxdb
+
 volumes:
   influxdb_data:
   grafana_data:

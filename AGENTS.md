@@ -12,6 +12,7 @@ projects/
   water-monitor/       Flask + InfluxDB · dual underground tanks · Phase 2 complete
   solar-battery/       Flask + InfluxDB · Victron integration (planned)
   dns-monitor/         Flask + InfluxDB · Pi-hole v6
+  lighting-control/    Flask + InfluxDB · Shelly Gen1/Gen2 · MQTT + HTTP · port 5005
 shared/
   db/influx.py         InfluxDB 2.7 wrapper
   mqtt/client.py       Mosquitto MQTT helper
@@ -46,13 +47,15 @@ docker-compose logs -f <service>
 
 ## Port assignments
 
-| Project         | Port |
-|-----------------|------|
-| dns-monitor     | 5000 |
-| power-dashboard | 5001 |
-| water-monitor   | 5002 |
-| solar-battery   | 5003 |
-| Grafana         | 3000 |
+| Project          | Port |
+|------------------|------|
+| dns-monitor      | 5000 |
+| power-dashboard  | 5001 |
+| water-monitor    | 5002 |
+| solar-battery    | 5003 |
+| water-monitor dev| 5004 |
+| lighting-control | 5005 |
+| Grafana          | 3000 |
 
 ## Environment variables (names only)
 
@@ -91,6 +94,8 @@ ALERT_EMAIL_TO
 | Dayliff DDA 1000P | Water pump (×2) | Monitored via Tuya/MQTT |
 | Victron Cerbo GX | Solar + battery aggregator | MQTT (planned) |
 | Pi-hole v6 | DNS filtering | REST API |
+| Shelly Gen1 (shelly1, shelly1pm, shellydimmer2) | Room lighting | MQTT + HTTP local |
+| Shelly Gen2 (shellyplus1pm, shellyplus1) | Room lighting | MQTT + HTTP RPC local |
 
 ## Architecture decisions
 
@@ -109,10 +114,21 @@ ALERT_EMAIL_TO
   session runs. Do not remove these fields.
 - **RWF tiered tariff.** REG (Rwanda) residential prepaid rate structure:
   0–20 kWh at 89 RWF/kWh, 21–50 kWh at 310 RWF/kWh, 51+ kWh at 369 RWF/kWh.
+- **Lighting: device_id not shelly_id.** `shelly_id` (hardware address) is used
+  for MQTT topic matching and HTTP targeting only. All InfluxDB tags and API
+  responses use `device_id` (stable, human-readable, from config).
+- **Lighting: Gen1/Gen2 dispatch is config-driven.** The `generation: gen1|gen2`
+  field in `lighting.yaml` is the only dispatch signal. No topic-string heuristics.
+- **Lighting: null fields omitted from writes.** `_clean_fields()` in
+  `lighting-control/collector/writer.py` strips None values before every InfluxDB
+  write. Non-dimmable and non-PM devices never write zero-valued placeholders.
+- **Lighting: HA discovery is opt-in.** `home_assistant.enabled: false` by default.
+  When true, discovery payloads publish to `homeassistant/light/{device_id}/config`
+  and state mirrors to `homelab/lighting/{device_id}/state`.
 
 ## Testing standards
 
-- Minimum 100 tests per project (water-monitor is the reference at 124).
+- Minimum 100 tests per project (water-monitor: 170, lighting-control: 96).
 - All hardware and network dependencies must be mocked. No real Modbus, MQTT,
   Tuya, or InfluxDB calls in tests.
 - Mock targets: `paho.mqtt.client.Client`, `pymodbus.client.ModbusTcpClient`,
@@ -129,6 +145,8 @@ ALERT_EMAIL_TO
 - **Reference for alerting + backoff:** `projects/water-monitor/collector/notifier.py`
 - **Reference for config validation:** `projects/water-monitor/collector/config_validator.py`
 - **Reference for test mock patterns:** `projects/water-monitor/tests/test_alerter.py`
+- **Reference for Shelly Gen1/Gen2 MQTT + HTTP:** `projects/lighting-control/collector/mqtt_collector.py`
+- **Reference for HA discovery pattern:** `projects/lighting-control/collector/mqtt_collector.py`
 
 ## Rules
 
@@ -151,8 +169,17 @@ ALERT_EMAIL_TO
 | `main` | Cleanup complete — water-monitor Python 3.9 annotations fixed; CodeQL #1–7 resolved |
 | `feature/power-dashboard-collector` | Merged — power dashboard collector/calculator/test suite complete |
 | `feature/solar-battery-phase1-dashboard` | Solar dashboard UI/API/query schema complete; tests at 122 passing |
+| `feature/lighting-phase1` | Lighting foundation complete — Shelly Gen1/Gen2 MQTT+HTTP, Flask API, 6-tab dashboard, 96 tests passing |
 
 ## Active roadmap
+
+### Lighting control
+- [x] Phase 1: scaffold, Shelly Gen1/Gen2 MQTT + HTTP collectors, Flask API, 6-tab dashboard
+- [x] Dev server: `cd projects/lighting-control && ../.venv/bin/python -m tests.dev_server` (port 5005)
+- [ ] Phase 2: Rooms (zone/group hierarchy, bulk control), Scenes (composer, pip row preview)
+- [ ] Phase 2: Schedules (cron + sunrise/sunset triggers, Kigali lat/long pre-filled)
+- [ ] Phase 2: Presence (Home/Away/Sleep modes, MQTT topic for external triggers)
+- [ ] Phase 2 branch: `feature/lighting-phase2`
 
 ### Power dashboard (current focus)
 - [x] MQTT collector for Shelly Pro 3EM + IotaWatt (`collector/mqtt_collector.py`)

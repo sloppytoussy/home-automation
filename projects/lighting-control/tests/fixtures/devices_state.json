@@ -1,0 +1,50 @@
+[
+  {
+    "device_id": "living_room_main",
+    "name": "Living Room Main",
+    "room": "living_room",
+    "device_type": "shellyplus1pm",
+    "generation": "gen2",
+    "is_on": true,
+    "brightness_pct": null,
+    "power_w": 42.5,
+    "last_seen": "2026-05-07T10:00:00+00:00",
+    "online": true
+  },
+  {
+    "device_id": "bedroom_lamp",
+    "name": "Bedroom Lamp",
+    "room": "bedroom",
+    "device_type": "shelly1",
+    "generation": "gen1",
+    "is_on": false,
+    "brightness_pct": null,
+    "power_w": null,
+    "last_seen": "2026-05-07T10:00:00+00:00",
+    "online": true
+  },
+  {
+    "device_id": "kitchen_counter",
+    "name": "Kitchen Counter",
+    "room": "kitchen",
+    "device_type": "shellydimmer2",
+    "generation": "gen1",
+    "is_on": true,
+    "brightness_pct": 65.0,
+    "power_w": 32.5,
+    "last_seen": "2026-05-07T10:00:00+00:00",
+    "online": true
+  },
+  {
+    "device_id": "office_ceiling",
+    "name": "Office Ceiling",
+    "room": "office",
+    "device_type": "shellyplus1",
+    "generation": "gen2",
+    "is_on": false,
+    "brightness_pct": null,
+    "power_w": 0.0,
+    "last_seen": "2026-05-07T10:00:00+00:00",
+    "online": true
+  }
+]

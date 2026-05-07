@@ -1,0 +1,46 @@
+mqtt:
+  broker_host: localhost
+  broker_port: 1883
+
+devices:
+  - id: living_room_main
+    name: "Living Room Main"
+    room: living_room
+    type: shellyplus1pm
+    generation: gen2
+    ip: "REPLACE_WITH_DEVICE_IP"
+    shelly_id: "shellyplus1pm-REPLACE"
+    dimmable: false
+    has_power_meter: true
+
+  - id: bedroom_lamp
+    name: "Bedroom Lamp"
+    room: bedroom
+    type: shelly1
+    generation: gen1
+    ip: "REPLACE_WITH_DEVICE_IP"
+    shelly_id: "shelly1-REPLACE"
+    dimmable: false
+    has_power_meter: false
+
+rooms:
+  - id: living_room
+    name: "Living Room"
+  - id: bedroom
+    name: "Bedroom"
+  - id: kitchen
+    name: "Kitchen"
+  - id: office
+    name: "Office"
+
+home_assistant:
+  enabled: false
+  discovery_prefix: homeassistant
+
+influxdb:
+  bucket: lighting
+  org: homelab
+
+collection:
+  http_poll_interval: 30
+  buffer_size: 200

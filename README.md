@@ -10,6 +10,7 @@ A collection of home monitoring and automation projects.
 | [water-monitor](projects/water-monitor/) | Underground water tank level tracking |
 | [solar-battery](projects/solar-battery/) | Solar production and battery State of Charge dashboard |
 | [dns-monitor](projects/dns-monitor/) | Live DNS query activity and analytics |
+| [lighting-control](projects/lighting-control/) | Shelly device control — room lighting, scenes, schedules, presence |
 | [notifications](projects/notifications/) | Shared alerting and notification system |
 
 ## Architecture
