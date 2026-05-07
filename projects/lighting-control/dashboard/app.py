@@ -104,10 +104,9 @@ def latest_device_rows() -> list[dict[str, Any]]:
         from(bucket: "{bucket}")
           |> range(start: -30d)
           |> filter(fn: (r) => r._measurement == "lighting_state")
-          |> group(columns: ["device_id"])
-          |> sort(columns: ["_time"], desc: true)
-          |> limit(n: 1)
-          |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+          |> group(columns: ["device_id", "_field"])
+          |> last()
+          |> pivot(rowKey: ["device_id"], columnKey: ["_field"], valueColumn: "_value")
     ''')
 
 

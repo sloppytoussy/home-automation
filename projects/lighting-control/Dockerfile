@@ -9,4 +9,6 @@ COPY projects/lighting-control /app/projects/lighting-control
 WORKDIR /app/projects/lighting-control
 
 EXPOSE 5005
-CMD ["python", "-m", "flask", "--app", "dashboard.app", "run", "--host", "0.0.0.0", "--port", "5005"]
+
+# Default: collector. The lighting-dashboard service overrides this CMD.
+CMD ["python", "-m", "collector.main"]

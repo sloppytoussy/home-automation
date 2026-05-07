@@ -103,7 +103,9 @@ services:
       - influxdb
 
   lighting-collector:
-    build: ./projects/lighting-control
+    build:
+      context: .
+      dockerfile: projects/lighting-control/Dockerfile
     container_name: lighting-collector
     restart: unless-stopped
     env_file: .env
@@ -112,10 +114,12 @@ services:
       - mosquitto
 
   lighting-dashboard:
-    build: ./projects/lighting-control
+    build:
+      context: .
+      dockerfile: projects/lighting-control/Dockerfile
     container_name: lighting-dashboard
     restart: unless-stopped
-    command: ["gunicorn", "-w", "2", "-b", "0.0.0.0:5005", "dashboard.app:app"]
+    command: ["python", "-m", "flask", "--app", "dashboard.app", "run", "--host", "0.0.0.0", "--port", "5005"]
     ports:
       - "5005:5005"
     env_file: .env
