@@ -150,6 +150,7 @@ ALERT_EMAIL_TO
 |---|---|
 | `main` | Cleanup complete — water-monitor Python 3.9 annotations fixed; CodeQL #1–7 resolved |
 | `feature/power-dashboard-collector` | Merged — power dashboard collector/calculator/test suite complete |
+| `feature/solar-battery-phase1-dashboard` | Solar dashboard UI/API/query schema complete; tests at 122 passing |
 
 ## Active roadmap
 
@@ -159,10 +160,21 @@ ALERT_EMAIL_TO
 - [x] Calculator API routes (`/api/calculator/*`)
 - [x] Test suite to 100+ tests
 
-### Solar/battery dashboard (next)
-- [ ] Victron Cerbo GX MQTT subscriber
-- [ ] Cerbo keep-alive publisher (60s interval, `R/{portal_id}/keepalive`)
-- [ ] Solar data wired into power dashboard net consumption
+### Solar/battery dashboard
+- [x] Phase 1 dashboard UI with placeholder Cerbo GX state
+- [x] `/api/solar/*` Flask routes and InfluxDB query layer
+- [x] `solar_readings` schema documentation and collector config stub
+- [x] Fixture-backed dev server:
+  `cd projects/solar-battery && python -m tests.dev_server`
+- [ ] Phase 2 Victron Cerbo GX MQTT subscriber — blocked until Cerbo GX
+  hardware is purchased
+- [ ] Phase 2 Cerbo keep-alive publisher (60s interval,
+  `R/{portal_id}/keepalive`)
+- [ ] Phase 2 solar data wired into power dashboard net consumption
+
+Battery note: solar/battery uses a third-party LifePO4 2x12V 200Ah battery
+with integrated BMS. Cerbo telemetry is expected to be pack-level only:
+SOC, voltage, current, and power. No cell-level dashboard fields are planned.
 
 ### Water monitor (stabilized — Phase 2 complete)
 - No active work planned.

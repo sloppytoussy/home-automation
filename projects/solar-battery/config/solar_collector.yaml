@@ -1,0 +1,25 @@
+# Solar battery collector config
+# Phase 1 — Cerbo GX hardware not yet installed
+# Fill portal_id and mqtt_host when Cerbo GX is on the network
+# portal_id: VRM portal → Settings → General
+#             or Cerbo GX screen → Settings → VRM online portal → Portal ID
+# mqtt_host:  local IP of Cerbo GX (check router DHCP table)
+
+cerbo:
+  portal_id: "REPLACE_WITH_PORTAL_ID"
+  mqtt_host: "REPLACE_WITH_CERBO_IP"
+  mqtt_port: 1883
+  keepalive_interval: 60
+
+hardware:
+  mppt_count: 1
+  topology: hybrid
+  battery_type: third_party_lifepo4
+  battery_spec: "2x12V 200Ah LifePO4 with integrated BMS"
+
+influxdb:
+  bucket: solar
+  org: homelab
+
+collection:
+  poll_log_interval: 300
