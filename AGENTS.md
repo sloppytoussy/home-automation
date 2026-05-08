@@ -16,6 +16,7 @@ projects/
 shared/
   db/influx.py         InfluxDB 2.7 wrapper
   mqtt/client.py       Mosquitto MQTT helper
+  auth/                Flask auth blueprint + YAML user store
   utils/               Structured logging
 infrastructure/
   docker/
@@ -71,6 +72,9 @@ SMTP_PORT
 SMTP_USER
 SMTP_PASSWORD
 ALERT_EMAIL_TO
+SECRET_KEY
+AUTH_USERS_FILE
+AUTH_SESSION_LIFETIME_HOURS
 ```
 
 ## Runtime notes
@@ -125,6 +129,11 @@ ALERT_EMAIL_TO
 - **Lighting: HA discovery is opt-in.** `home_assistant.enabled: false` by default.
   When true, discovery payloads publish to `homeassistant/light/{device_id}/config`
   and state mirrors to `homelab/lighting/{device_id}/state`.
+- **Auth is shared only.** Dashboard authentication lives in `shared/auth/` as a
+  Flask Blueprint backed by `infrastructure/users.yaml`; dashboards register the
+  blueprint and decorators without duplicating auth logic.
+- **Auth users file is private.** `infrastructure/users.yaml` contains bcrypt
+  password hashes and is gitignored; commit only `infrastructure/users.yaml.example`.
 
 ## Testing standards
 
@@ -170,8 +179,13 @@ ALERT_EMAIL_TO
 | `feature/power-dashboard-collector` | Merged — power dashboard collector/calculator/test suite complete |
 | `feature/solar-battery-phase1-dashboard` | Solar dashboard UI/API/query schema complete; tests at 122 passing |
 | `feature/lighting-phase1` | Lighting foundation complete — Shelly Gen1/Gen2 MQTT+HTTP, Flask API, 6-tab dashboard, 96 tests passing |
+| `feature/auth-foundation` | Shared auth foundation complete — Blueprint, YAML user store, bcrypt helper, lighting-control proof-of-concept |
 
 ## Active roadmap
+
+### Completed
+- [x] Auth foundation: shared Flask Blueprint, bcrypt-backed YAML user store,
+  login/logout/me routes, and lighting-control index-route integration
 
 ### Lighting control
 - [x] Phase 1: scaffold, Shelly Gen1/Gen2 MQTT + HTTP collectors, Flask API, 6-tab dashboard

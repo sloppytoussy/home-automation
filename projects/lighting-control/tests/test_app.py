@@ -53,6 +53,10 @@ def patch_error(monkeypatch):
 
 
 def test_index_renders(client):
+    with client.session_transaction() as saved_session:
+        saved_session["username"] = "admin"
+        saved_session["role"] = "admin"
+        saved_session["display_name"] = "Admin"
     response = client.get("/")
     assert response.status_code == 200
     assert b"Lighting Control" in response.data

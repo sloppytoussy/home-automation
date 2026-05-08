@@ -1,0 +1,12 @@
+# Copy to infrastructure/users.yaml and replace hashes.
+# Generate hashes: python scripts/hash_password.py <password>
+users:
+  - username: admin
+    password_hash: "REPLACE_WITH_BCRYPT_HASH"
+    role: admin
+    display_name: "Admin"
+
+  - username: viewer
+    password_hash: "REPLACE_WITH_BCRYPT_HASH"
+    role: user
+    display_name: "Viewer"
