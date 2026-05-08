@@ -14,6 +14,8 @@ from influxdb_client import InfluxDBClient
 from yaml import YAMLError
 
 from collector import writer
+from shared.auth.blueprint import auth_bp
+from shared.auth.decorators import require_auth
 
 for _env_candidate in [
     Path(__file__).parent / ".env",
@@ -25,6 +27,8 @@ for _env_candidate in [
         break
 
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY", "dev-key-replace-in-production")
+app.register_blueprint(auth_bp)
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "lighting.yaml"
 INFLUX_REQUIRED_ENV = ("INFLUXDB_URL", "INFLUXDB_TOKEN", "INFLUXDB_ORG", "INFLUXDB_BUCKET")
 ONLINE_THRESHOLD_MINUTES = 5
@@ -239,6 +243,7 @@ def service_error(exc: Exception):
 
 
 @app.route("/")
+@require_auth
 def index():
     return render_template("index.html")
 
