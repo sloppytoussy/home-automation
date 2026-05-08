@@ -126,6 +126,18 @@ services:
     depends_on:
       - influxdb
 
+  home-hub:
+    build:
+      context: .
+      dockerfile: projects/home-hub/Dockerfile
+    container_name: home-hub
+    restart: unless-stopped
+    ports:
+      - "5006:5006"
+    env_file: .env
+    depends_on:
+      - influxdb
+
 volumes:
   influxdb_data:
   grafana_data:

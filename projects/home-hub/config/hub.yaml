@@ -1,0 +1,45 @@
+services:
+  - id: dns_monitor
+    name: "DNS monitor"
+    url: "http://localhost:5000"
+    metrics_endpoint: "/api/summary"
+    port: 5000
+
+  - id: power_dashboard
+    name: "Power dashboard"
+    url: "http://localhost:5001"
+    metrics_endpoint: "/api/summary"
+    port: 5001
+
+  - id: water_monitor
+    name: "Water monitor"
+    url: "http://localhost:5002"
+    metrics_endpoint: "/api/tanks"
+    port: 5002
+
+  - id: solar_battery
+    name: "Solar & battery"
+    url: "http://localhost:5003"
+    metrics_endpoint: "/api/solar/summary"
+    port: 5003
+
+  - id: lighting_control
+    name: "Lighting control"
+    url: "http://localhost:5005"
+    metrics_endpoint: "/api/lighting/overview"
+    port: 5005
+
+infrastructure:
+  influxdb:
+    url: "http://localhost:8086"
+    health_path: "/health"
+  grafana:
+    url: "http://localhost:3000"
+    health_path: "/api/health"
+  mqtt:
+    host: "localhost"
+    port: 1883
+
+hub:
+  fetch_timeout_seconds: 2
+  refresh_interval_seconds: 30
