@@ -75,12 +75,9 @@ SMTP_USER
 SMTP_PASSWORD
 ALERT_EMAIL_TO
 SECRET_KEY
-<<<<<<< HEAD
 AUTH_USERS_FILE
 AUTH_SESSION_LIFETIME_HOURS
-=======
 HUB_SERVICE_<ID>_URL
->>>>>>> 136b8a7 (feat(home-hub): add authenticated platform overview)
 ```
 
 ## Runtime notes
@@ -135,20 +132,17 @@ HUB_SERVICE_<ID>_URL
 - **Lighting: HA discovery is opt-in.** `home_assistant.enabled: false` by default.
   When true, discovery payloads publish to `homeassistant/light/{device_id}/config`
   and state mirrors to `homelab/lighting/{device_id}/state`.
-<<<<<<< HEAD
 - **Auth is shared only.** Dashboard authentication lives in `shared/auth/` as a
   Flask Blueprint backed by `infrastructure/users.yaml`; dashboards register the
   blueprint and decorators without duplicating auth logic.
 - **Auth users file is private.** `infrastructure/users.yaml` contains bcrypt
   password hashes and is gitignored; commit only `infrastructure/users.yaml.example`.
-=======
 - **Home hub uses hub.yaml as source of truth.** Service cards, ports, and URLs
   come from `projects/home-hub/config/hub.yaml`; runtime service URL overrides
   use `HUB_SERVICE_{ID}_URL`.
 - **Home hub API stays available during downstream failures.** `/api/hub/overview`
   returns HTTP 200 with per-service offline states even when all sub-project
   endpoints or infrastructure checks fail.
->>>>>>> 136b8a7 (feat(home-hub): add authenticated platform overview)
 
 ## Testing standards
 
@@ -194,11 +188,8 @@ HUB_SERVICE_<ID>_URL
 | `feature/power-dashboard-collector` | Merged — power dashboard collector/calculator/test suite complete |
 | `feature/solar-battery-phase1-dashboard` | Solar dashboard UI/API/query schema complete; tests at 122 passing |
 | `feature/lighting-phase1` | Lighting foundation complete — Shelly Gen1/Gen2 MQTT+HTTP, Flask API, 6-tab dashboard, 96 tests passing |
-<<<<<<< HEAD
 | `feature/auth-foundation` | Shared auth foundation complete — Blueprint, YAML user store, bcrypt helper, lighting-control proof-of-concept |
-=======
 | `feature/home-hub` | Home hub scaffold complete — authenticated overview, fixture dev server, Docker service, 48 tests passing |
->>>>>>> 136b8a7 (feat(home-hub): add authenticated platform overview)
 
 ## Active roadmap
 
