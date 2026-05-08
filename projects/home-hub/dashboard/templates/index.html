@@ -214,6 +214,7 @@
     function App() {
       const [overview, setOverview] = useState(null);
       const [loading, setLoading] = useState(true);
+      const [currentUser, setCurrentUser] = useState(null);
 
       async function loadOverview() {
         try {
@@ -232,6 +233,26 @@
         const timer = setInterval(loadOverview, REFRESH_SECONDS * 1000);
         return () => clearInterval(timer);
       }, []);
+
+      useEffect(() => {
+        fetch("/auth/me")
+          .then(r => r.json())
+          .then(data => {
+            if (!data.logged_in) {
+              window.location.href = "/auth/login?next=" + encodeURIComponent(window.location.pathname);
+            } else {
+              setCurrentUser(data);
+            }
+          })
+          .catch(() => {
+            window.location.href = "/auth/login";
+          });
+      }, []);
+
+      function handleLogout() {
+        fetch("/auth/logout", {method: "POST"})
+          .then(() => { window.location.href = "/auth/login"; });
+      }
 
       const services = useMemo(() => {
         const byId = new Map((overview?.services || []).map(service => [service.id, service]));
@@ -262,8 +283,22 @@
               <span className="pill"><span className={`dot ${infra.influxdb?.online ? "online" : "offline"}`}></span>InfluxDB {infra.influxdb?.online ? "online" : "offline"}</span>
               {solarOffline && <span className="pill alert">Solar offline</span>}
               <span className="pill live">⟳ 30S</span>
-              <span className="pill">{SESSION_USER.username || "home"}</span>
-              <a className="logout" href="/auth/logout">Logout</a>
+              {currentUser && (
+                <div style={{display:"flex", alignItems:"center", gap:"8px"}}>
+                  <span className="pill">{currentUser.display_name || currentUser.username}</span>
+                  {currentUser?.role === "admin" && (
+                    <span style={{fontSize:"11px", padding:"2px 8px", borderRadius:"12px", background:"rgba(245,165,36,0.15)", color:"#f5a524", fontWeight:"500"}}>
+                      Admin
+                    </span>
+                  )}
+                  {currentUser?.role === "admin" && (
+                    <a href="/admin" style={{fontSize:"12px", color:"var(--muted)", opacity:0.6, cursor:"not-allowed", pointerEvents:"none"}} title="Admin panel - coming in Phase 5">
+                      Settings
+                    </a>
+                  )}
+                  <button className="logout" onClick={handleLogout}>Sign out</button>
+                </div>
+              )}
             </div>
           </header>
 

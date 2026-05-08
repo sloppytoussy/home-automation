@@ -1331,6 +1331,7 @@ function App() {
   const [consumption, setConsumption] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
 
   const fetchTanks = useCallback(async () => {
     try {
@@ -1361,6 +1362,21 @@ function App() {
     const iv = setInterval(fetchTanks, 30000);
     return () => clearInterval(iv);
   }, [fetchTanks, fetchConsumption]);
+
+  useEffect(() => {
+    fetch('/auth/me')
+      .then(r => r.json())
+      .then(data => {
+        if (!data.logged_in) {
+          window.location.href = '/auth/login?next=' + encodeURIComponent(window.location.pathname);
+        } else {
+          setCurrentUser(data);
+        }
+      })
+      .catch(() => {
+        window.location.href = '/auth/login';
+      });
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-vibe", tweaks.vibe);
@@ -1409,6 +1425,11 @@ function App() {
   const useTrend = avgUse > 0 ? Math.round((todayUse - avgUse) / avgUse * 100) : null;
   const tank2 = displayTanks.find(t => t.id === "tank2");
 
+  function handleLogout() {
+    fetch('/auth/logout', {method: 'POST'})
+      .then(() => { window.location.href = '/auth/login'; });
+  }
+
   const heatTotal = consumption.reduce((s, d) => s + d.liters, 0);
   const heatAvg = consumption.length > 0 ? Math.round(heatTotal / consumption.length) : 0;
   const hasAnyReading = displayTanks.some(t => t.reading && t.reading.time);
@@ -1427,6 +1448,26 @@ function App() {
         </div>
         <div className="topbar-right">
           <span className="live-pill">Live · 30s</span>
+          {currentUser && (
+            <div style={{display: "flex", alignItems: "center", gap: "8px"}}>
+              <span style={{fontSize: "13px", color: "var(--muted)"}}>
+                {currentUser.display_name || currentUser.username}
+              </span>
+              <button
+                onClick={handleLogout}
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-sm)",
+                  color: "var(--text-2)",
+                  padding: "7px 10px",
+                  fontSize: "12px",
+                }}
+              >
+                Sign out
+              </button>
+            </div>
+          )}
           <button className="icon-btn" aria-label="Refresh" title="Refresh" onClick={fetchTanks}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 12a9 9 0 1 1-3-6.7" /><path d="M21 4v5h-5" />
