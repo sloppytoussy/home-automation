@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Home Automation</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101214;
+      --panel: #181b1f;
+      --panel-soft: #20242a;
+      --border: #313741;
+      --text: #f2f4f7;
+      --muted: #9aa4b2;
+      --amber: #f5a524;
+      --green: #3ddc97;
+      --red: #ff5c73;
+      --blue: #6bb7ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+    a { color: inherit; text-decoration: none; }
+    .shell { width: min(1180px, calc(100vw - 32px)); margin: 0 auto; padding: 24px 0 36px; }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      padding: 14px 0 22px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 22px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 220px; }
+    .logo { width: 34px; height: 34px; border-radius: 8px; background: var(--amber); box-shadow: inset 0 0 0 8px rgba(16,18,20,.18); }
+    .brand-title { font-weight: 800; font-size: 18px; line-height: 1.1; }
+    .brand-subtitle { color: var(--muted); font-size: 13px; margin-top: 3px; }
+    .header-right { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+    .pill, .chip, .logout {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 32px;
+      padding: 0 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .pill.live { color: var(--blue); border-color: rgba(107,183,255,.35); }
+    .pill.alert { color: var(--amber); border-color: rgba(245,165,36,.38); }
+    .logout { color: var(--text); cursor: pointer; }
+    .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--muted); }
+    .dot.online { background: var(--green); }
+    .dot.offline { background: var(--red); }
+    .banner {
+      border: 1px solid rgba(245,165,36,.35);
+      color: #ffd48a;
+      background: rgba(245,165,36,.08);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .card {
+      min-height: 214px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .card.offline { border-color: rgba(255,92,115,.28); background: #15171a; }
+    .card-head, .card-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px; }
+    .service-label { color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+    .service-name { margin-top: 5px; font-size: 18px; font-weight: 750; }
+    .badge { border-radius: 999px; padding: 5px 9px; font-size: 12px; color: var(--muted); background: var(--panel-soft); }
+    .badge.online { color: #bff5dd; background: rgba(61,220,151,.13); }
+    .badge.offline { color: #ffc3cb; background: rgba(255,92,115,.13); }
+    .badge.waiting { color: #ffd48a; background: rgba(245,165,36,.13); }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 0 14px 14px;
+    }
+    .metric { min-height: 72px; border-radius: 8px; background: var(--panel-soft); padding: 11px; }
+    .metric-value { font-size: 22px; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+    .metric-label { color: var(--muted); font-size: 12px; margin-top: 7px; }
+    .muted { color: var(--muted); }
+    .open-link { color: var(--blue); font-weight: 650; }
+    .infra {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .chip { justify-content: center; min-height: 42px; }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .header-right { justify-content: flex-start; }
+    }
+    @media (max-width: 620px) {
+      .shell { width: min(100vw - 22px, 1180px); padding-top: 16px; }
+      .grid, .infra { grid-template-columns: 1fr; }
+      .card-head, .card-foot { align-items: flex-start; }
+      .metrics { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    window.HUB_SESSION_USER = {{ {"username": username, "role": role}|tojson }};
+    window.HUB_SERVICES = {{ services|tojson }};
+  </script>
+  {% raw %}
+  <script type="text/babel">
+    const {useEffect, useMemo, useState} = React;
+    const REFRESH_SECONDS = 30;
+    const SESSION_USER = window.HUB_SESSION_USER || {};
+    const SERVICE_DEFAULTS = window.HUB_SERVICES || [];
+
+    function titleize(key) {
+      return key.replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase());
+    }
+
+    function valueText(value, key) {
+      if (value === null || value === undefined || value === "") return "—";
+      if (Array.isArray(value)) {
+        const first = value[0];
+        if (!first) return "—";
+        return `${first.level_pct ?? "—"}%`;
+      }
+      if (typeof value === "boolean") return value ? "Yes" : "No";
+      if (typeof value === "number") {
+        if (key.includes("pct")) return `${value}%`;
+        if (key.includes("_w")) return `${value} W`;
+        if (key.includes("kwh")) return `${value} kWh`;
+      }
+      return String(value);
+    }
+
+    function metricEntries(service) {
+      const entries = Object.entries(service.key_metrics || {});
+      if (service.id === "water_monitor") {
+        return [
+          ["tank_level", service.key_metrics?.tanks || []],
+          ["tank_volume", (service.key_metrics?.tanks || [])[0]?.volume_liters]
+        ];
+      }
+      return entries.slice(0, 2);
+    }
+
+    function statusClass(service) {
+      if (!service.online) return "offline";
+      if (!service.data_available) return "waiting";
+      return "online";
+    }
+
+    function statusLabel(service) {
+      if (!service.online) return "Offline";
+      if (!service.data_available) return "Waiting";
+      return "Online";
+    }
+
+    function ServiceCard({service}) {
+      const entries = metricEntries(service);
+      const metrics = entries.length ? entries : [["metric_one", null], ["metric_two", null]];
+      return (
+        <section className={`card ${service.online ? "" : "offline"}`}>
+          <div className="card-head">
+            <div>
+              <div className="service-label">Service</div>
+              <div className="service-name">{service.name}</div>
+            </div>
+            <span className={`badge ${statusClass(service)}`}>{statusLabel(service)}</span>
+          </div>
+          <div className="metrics">
+            {metrics.slice(0, 2).map(([key, value]) => (
+              <div className="metric" key={key}>
+                <div className="metric-value">{service.online && service.data_available ? valueText(value, key) : "—"}</div>
+                <div className="metric-label">{titleize(key)}</div>
+              </div>
+            ))}
+          </div>
+          <div className="card-foot">
+            <span className="muted">:{service.port}</span>
+            <a className="open-link" href={service.url}>Open →</a>
+          </div>
+        </section>
+      );
+    }
+
+    function App() {
+      const [overview, setOverview] = useState(null);
+      const [loading, setLoading] = useState(true);
+
+      async function loadOverview() {
+        try {
+          const response = await fetch("/api/hub/overview");
+          const data = await response.json();
+          setOverview(data);
+        } catch (error) {
+          setOverview(null);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      useEffect(() => {
+        loadOverview();
+        const timer = setInterval(loadOverview, REFRESH_SECONDS * 1000);
+        return () => clearInterval(timer);
+      }, []);
+
+      const services = useMemo(() => {
+        const byId = new Map((overview?.services || []).map(service => [service.id, service]));
+        return SERVICE_DEFAULTS.map(service => byId.get(service.id) || {
+          ...service,
+          online: false,
+          data_available: false,
+          key_metrics: {},
+          last_updated: null
+        });
+      }, [overview]);
+
+      const infra = overview?.infrastructure || {};
+      const solarOffline = services.find(service => service.id === "solar_battery" && !service.online);
+
+      return (
+        <main className="shell">
+          <header className="topbar">
+            <div className="brand">
+              <div className="logo" aria-hidden="true"></div>
+              <div>
+                <div className="brand-title">Home Automation</div>
+                <div className="brand-subtitle">Kigali · Home Automation</div>
+              </div>
+            </div>
+            <div className="header-right">
+              <span className="pill"><span className={`dot ${infra.mqtt?.online ? "online" : "offline"}`}></span>MQTT {infra.mqtt?.online ? "online" : "offline"}</span>
+              <span className="pill"><span className={`dot ${infra.influxdb?.online ? "online" : "offline"}`}></span>InfluxDB {infra.influxdb?.online ? "online" : "offline"}</span>
+              {solarOffline && <span className="pill alert">Solar offline</span>}
+              <span className="pill live">⟳ 30S</span>
+              <span className="pill">{SESSION_USER.username || "home"}</span>
+              <a className="logout" href="/auth/logout">Logout</a>
+            </div>
+          </header>
+
+          {(loading || !overview) && <div className="banner">Connecting to services...</div>}
+
+          <section className="grid">
+            {services.map(service => <ServiceCard key={service.id} service={service} />)}
+          </section>
+
+          <section className="infra">
+            <div className="chip"><span className={`dot ${infra.influxdb?.online ? "online" : "offline"}`}></span>InfluxDB · :8086 · {infra.influxdb?.online ? "online" : "offline"}</div>
+            <div className="chip"><span className={`dot ${infra.mqtt?.online ? "online" : "offline"}`}></span>Mosquitto MQTT · :1883 · {infra.mqtt?.online ? "online" : "offline"}</div>
+            <div className="chip"><span className={`dot ${infra.grafana?.online ? "online" : "offline"}`}></span>Grafana · :3000 · {infra.grafana?.online ? "online" : "offline"}</div>
+          </section>
+        </main>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+  {% endraw %}
+</body>
+</html>

@@ -1,0 +1,103 @@
+{
+  "services": [
+    {
+      "id": "dns_monitor",
+      "name": "DNS monitor",
+      "port": 5000,
+      "url": "http://localhost:5000",
+      "online": true,
+      "data_available": true,
+      "key_metrics": {
+        "queries_today": 12842,
+        "blocked_pct": 18.4
+      },
+      "last_updated": "2026-05-08T08:00:00+00:00"
+    },
+    {
+      "id": "power_dashboard",
+      "name": "Power dashboard",
+      "port": 5001,
+      "url": "http://localhost:5001",
+      "online": true,
+      "data_available": true,
+      "key_metrics": {
+        "remaining_kwh": 82.1,
+        "days_left": 12,
+        "consumption_rate_kwh_per_day": 6.8
+      },
+      "last_updated": "2026-05-08T08:00:00+00:00"
+    },
+    {
+      "id": "water_monitor",
+      "name": "Water monitor",
+      "port": 5002,
+      "url": "http://localhost:5002",
+      "online": true,
+      "data_available": true,
+      "key_metrics": {
+        "tanks": [
+          {
+            "id": "tank_a",
+            "name": "Main underground tank",
+            "level_pct": 72,
+            "volume_liters": 7200
+          },
+          {
+            "id": "tank_b",
+            "name": "Reserve underground tank",
+            "level_pct": 55,
+            "volume_liters": 5500
+          }
+        ]
+      },
+      "last_updated": "2026-05-08T08:00:00+00:00"
+    },
+    {
+      "id": "solar_battery",
+      "name": "Solar & battery",
+      "port": 5003,
+      "url": "http://localhost:5003",
+      "online": true,
+      "data_available": true,
+      "key_metrics": {
+        "battery_soc_pct": 68,
+        "pv_power_w": 1040,
+        "data_available": true
+      },
+      "last_updated": "2026-05-08T08:00:00+00:00"
+    },
+    {
+      "id": "lighting_control",
+      "name": "Lighting control",
+      "port": 5005,
+      "url": "http://localhost:5005",
+      "online": true,
+      "data_available": true,
+      "key_metrics": {
+        "devices_on": 6,
+        "devices_total": 18,
+        "total_power_w": 142.5
+      },
+      "last_updated": "2026-05-08T08:00:00+00:00"
+    }
+  ],
+  "infrastructure": {
+    "influxdb": {
+      "online": true,
+      "url": "http://localhost:8086"
+    },
+    "grafana": {
+      "online": true,
+      "url": "http://localhost:3000"
+    },
+    "mqtt": {
+      "online": true,
+      "host": "localhost",
+      "port": 1883
+    }
+  },
+  "services_online": 5,
+  "services_total": 5,
+  "data_available": true,
+  "last_updated": "2026-05-08T08:00:00+00:00"
+}
