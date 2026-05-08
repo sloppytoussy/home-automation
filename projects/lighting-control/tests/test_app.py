@@ -28,6 +28,18 @@ def anonymous_client():
     return lighting_app.app.test_client()
 
 
+@pytest.fixture
+def auth_session(client):
+    authenticate(client, role="admin")
+    return client
+
+
+@pytest.fixture
+def user_auth_session(client):
+    authenticate(client, role="user")
+    return client
+
+
 def authenticate(client, role: str = "admin"):
     with client.session_transaction() as saved_session:
         saved_session["username"] = "admin" if role == "admin" else "viewer"
@@ -77,6 +89,21 @@ def test_index_unauthenticated_redirects(anonymous_client):
     response = anonymous_client.get("/")
     assert response.status_code == 302
     assert "/auth/login" in response.headers["Location"]
+
+
+def test_auth_me_logged_in_returns_user(client, auth_session):
+    response = client.get("/auth/me")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["logged_in"] is True
+    assert "username" in data
+    assert "role" in data
+
+
+def test_auth_me_not_logged_in_returns_logged_out(anonymous_client):
+    response = anonymous_client.get("/auth/me")
+    assert response.status_code == 200
+    assert response.get_json()["logged_in"] is False
 
 
 def test_api_route_requires_auth_json(anonymous_client):
@@ -198,6 +225,26 @@ def test_set_mqtt_unavailable(client, monkeypatch):
     monkeypatch.setattr(lighting_app, "publish_command", fail)
     response = client.post("/api/lighting/devices/living_room_main/set", json={"on": True})
     assert response.status_code == 503
+
+
+def test_device_toggle_requires_auth(anonymous_client):
+    response = anonymous_client.post(
+        "/api/lighting/devices/living_room_main/set",
+        json={"on": True},
+    )
+    assert response.status_code in (302, 401)
+
+
+@pytest.mark.xfail(
+    reason="Toggle route uses @require_admin until Phase 5 changes it to @require_auth",
+    strict=True,
+)
+def test_device_toggle_allowed_for_user_role(client, user_auth_session):
+    response = client.post(
+        "/api/lighting/devices/living_room_main/set",
+        json={"on": True},
+    )
+    assert response.status_code in (200, 404, 503)
 
 
 def test_set_device_rejects_non_admin(client):
