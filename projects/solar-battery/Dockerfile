@@ -1,11 +1,13 @@
-FROM python:3.12-slim
+FROM python:3.9-slim
 WORKDIR /app
 
-COPY requirements.txt .
+COPY projects/solar-battery/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
-COPY ../../shared /app/shared
+COPY shared /app/shared
+COPY projects/solar-battery /app/projects/solar-battery
+WORKDIR /app/projects/solar-battery
+ENV PYTHONPATH=/app
 
 EXPOSE 5003
 

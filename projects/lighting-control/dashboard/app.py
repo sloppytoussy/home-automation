@@ -15,7 +15,7 @@ from yaml import YAMLError
 
 from collector import writer
 from shared.auth.blueprint import auth_bp
-from shared.auth.decorators import require_auth
+from shared.auth.decorators import require_admin, require_auth
 
 for _env_candidate in [
     Path(__file__).parent / ".env",
@@ -249,6 +249,7 @@ def index():
 
 
 @app.route("/api/lighting/overview")
+@require_auth
 def api_lighting_overview():
     try:
         return jsonify(overview_from_devices([normalize_device(row) for row in latest_device_rows()]))
@@ -259,6 +260,7 @@ def api_lighting_overview():
 
 
 @app.route("/api/lighting/devices")
+@require_auth
 def api_lighting_devices():
     try:
         return jsonify([normalize_device(row) for row in latest_device_rows()])
@@ -269,6 +271,7 @@ def api_lighting_devices():
 
 
 @app.route("/api/lighting/devices/<device_id>")
+@require_auth
 def api_lighting_device(device_id: str):
     try:
         if device_id not in devices_by_id():
@@ -284,6 +287,8 @@ def api_lighting_device(device_id: str):
 
 
 @app.route("/api/lighting/devices/<device_id>/set", methods=["POST"])
+@require_auth
+@require_admin
 def api_lighting_device_set(device_id: str):
     try:
         device = devices_by_id().get(device_id)
@@ -312,6 +317,7 @@ def api_lighting_device_set(device_id: str):
 
 
 @app.route("/api/lighting/rooms")
+@require_auth
 def api_lighting_rooms():
     try:
         return jsonify(rooms_from_devices([normalize_device(row) for row in latest_device_rows()]))
@@ -322,6 +328,7 @@ def api_lighting_rooms():
 
 
 @app.route("/api/lighting/history")
+@require_auth
 def api_lighting_history():
     try:
         device_id = request.args.get("device_id")
@@ -344,6 +351,7 @@ def api_lighting_history():
 
 
 @app.route("/api/lighting/status")
+@require_auth
 def api_lighting_status():
     try:
         rows = latest_device_rows()

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import sys
+import types
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -22,7 +23,137 @@ TIERS = [
 @pytest.fixture
 def client():
     app.config.update(TESTING=True)
+    test_client = app.test_client()
+    authenticate(test_client)
+    return test_client
+
+
+@pytest.fixture
+def anonymous_client():
+    app.config.update(TESTING=True)
     return app.test_client()
+
+
+def authenticate(client, role: str = "admin"):
+    with client.session_transaction() as saved_session:
+        saved_session["username"] = "owner" if role == "admin" else "viewer"
+        saved_session["role"] = role
+
+
+@pytest.mark.parametrize("path", ["/", "/entry", "/appliances"])
+def test_page_routes_require_auth(anonymous_client, path):
+    response = anonymous_client.get(path)
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["Location"]
+
+
+def test_index_authenticated_returns_dashboard(client):
+    authenticate(client)
+    response = client.get("/")
+    assert response.status_code == 200
+    assert b"Power Dashboard" in response.data
+
+
+def test_manual_entry_authenticated_returns_form(client):
+    authenticate(client)
+    response = client.get("/entry")
+    assert response.status_code == 200
+    assert b"Log Meter Reading" in response.data
+
+
+def test_appliances_authenticated_returns_form(client, monkeypatch):
+    authenticate(client)
+    monkeypatch.setattr("dashboard.app.load_rooms", lambda: [])
+    response = client.get("/appliances")
+    assert response.status_code == 200
+    assert b"Appliance" in response.data
+
+
+def test_api_route_requires_auth_json(anonymous_client):
+    response = anonymous_client.post(
+        "/api/calculator/bill-estimate",
+        json={"kwh": 10},
+        headers={"Accept": "application/json"},
+    )
+    assert response.status_code == 401
+    assert response.get_json() == {"error": "authentication required"}
+
+
+def test_manual_entry_rejects_non_admin(client):
+    authenticate(client, role="user")
+    response = client.post(
+        "/entry",
+        data={
+            "instant_load_w": "500",
+            "lifetime_kwh": "1200",
+            "remaining_kwh": "35",
+            "topup_kwh": "",
+            "notes": "",
+        },
+    )
+    assert response.status_code == 403
+    assert response.get_json() == {"error": "admin access required"}
+
+
+def test_manual_entry_allows_admin(client, monkeypatch):
+    writer = MagicMock()
+    writer_module = types.SimpleNamespace(PowerWriter=lambda: writer)
+    monkeypatch.setitem(sys.modules, "collector.writer", writer_module)
+
+    response = client.post(
+        "/entry",
+        data={
+            "instant_load_w": "500",
+            "lifetime_kwh": "1200",
+            "remaining_kwh": "35",
+            "topup_kwh": "",
+            "notes": "",
+        },
+    )
+
+    assert response.status_code == 200
+    writer.write_meter_reading.assert_called_once()
+
+
+def test_appliances_rejects_non_admin(client, monkeypatch):
+    writer = MagicMock()
+    writer_module = types.SimpleNamespace(PowerWriter=lambda: writer)
+    monkeypatch.setitem(sys.modules, "collector.writer", writer_module)
+    authenticate(client, role="user")
+
+    response = client.post(
+        "/appliances",
+        data={
+            "room": "Kitchen",
+            "appliance": "Fridge",
+            "watts": "120",
+            "daily_hours": "8",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.get_json() == {"error": "admin access required"}
+    writer.write_appliance_reading.assert_not_called()
+
+
+def test_appliances_allows_admin(client, monkeypatch):
+    writer = MagicMock()
+    writer_module = types.SimpleNamespace(PowerWriter=lambda: writer)
+    monkeypatch.setitem(sys.modules, "collector.writer", writer_module)
+    monkeypatch.setattr("dashboard.app.load_rooms", lambda: [])
+
+    response = client.post(
+        "/appliances",
+        data={
+            "room": "Kitchen",
+            "appliance": "Fridge",
+            "watts": "120",
+            "daily_hours": "8",
+        },
+    )
+
+    assert response.status_code == 200
+    writer.write_appliance_reading.assert_called_once()
 
 
 @pytest.mark.parametrize(

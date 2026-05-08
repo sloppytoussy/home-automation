@@ -34,7 +34,9 @@ services:
       - mosquitto_data:/mosquitto/data
 
   power-dashboard:
-    build: ./projects/power-dashboard
+    build:
+      context: .
+      dockerfile: projects/power-dashboard/Dockerfile
     container_name: power-dashboard
     restart: unless-stopped
     ports:
@@ -44,7 +46,9 @@ services:
       - influxdb
 
   water-collector:
-    build: ./projects/water-monitor
+    build:
+      context: .
+      dockerfile: projects/water-monitor/Dockerfile
     container_name: water-collector
     restart: unless-stopped
     env_file: .env
@@ -53,7 +57,9 @@ services:
       - mosquitto
 
   water-dashboard:
-    build: ./projects/water-monitor
+    build:
+      context: .
+      dockerfile: projects/water-monitor/Dockerfile
     container_name: water-dashboard
     restart: unless-stopped
     command: ["gunicorn", "-w", "2", "-b", "0.0.0.0:5002", "dashboard.app:app"]
@@ -64,7 +70,9 @@ services:
       - influxdb
 
   solar-collector:
-    build: ./projects/solar-battery
+    build:
+      context: .
+      dockerfile: projects/solar-battery/Dockerfile
     container_name: solar-collector
     restart: unless-stopped
     env_file: .env
@@ -73,7 +81,9 @@ services:
       - mosquitto
 
   solar-dashboard:
-    build: ./projects/solar-battery
+    build:
+      context: .
+      dockerfile: projects/solar-battery/Dockerfile
     container_name: solar-dashboard
     restart: unless-stopped
     command: ["gunicorn", "-w", "2", "-b", "0.0.0.0:5003", "dashboard.app:app"]
@@ -84,7 +94,9 @@ services:
       - influxdb
 
   dns-collector:
-    build: ./projects/dns-monitor
+    build:
+      context: .
+      dockerfile: projects/dns-monitor/Dockerfile
     container_name: dns-collector
     restart: unless-stopped
     env_file: .env
@@ -92,7 +104,9 @@ services:
       - influxdb
 
   dns-dashboard:
-    build: ./projects/dns-monitor
+    build:
+      context: .
+      dockerfile: projects/dns-monitor/Dockerfile
     container_name: dns-dashboard
     restart: unless-stopped
     command: ["gunicorn", "-w", "2", "-b", "0.0.0.0:5000", "dashboard.app:app"]

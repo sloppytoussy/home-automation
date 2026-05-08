@@ -17,7 +17,22 @@ from dashboard import app as lighting_app
 @pytest.fixture
 def client():
     lighting_app.app.config.update(TESTING=True)
+    test_client = lighting_app.app.test_client()
+    authenticate(test_client)
+    return test_client
+
+
+@pytest.fixture
+def anonymous_client():
+    lighting_app.app.config.update(TESTING=True)
     return lighting_app.app.test_client()
+
+
+def authenticate(client, role: str = "admin"):
+    with client.session_transaction() as saved_session:
+        saved_session["username"] = "admin" if role == "admin" else "viewer"
+        saved_session["role"] = role
+        saved_session["display_name"] = "Admin" if role == "admin" else "Viewer"
 
 
 def row(device_id="living_room_main", minutes=1, **overrides):
@@ -53,13 +68,24 @@ def patch_error(monkeypatch):
 
 
 def test_index_renders(client):
-    with client.session_transaction() as saved_session:
-        saved_session["username"] = "admin"
-        saved_session["role"] = "admin"
-        saved_session["display_name"] = "Admin"
     response = client.get("/")
     assert response.status_code == 200
     assert b"Lighting Control" in response.data
+
+
+def test_index_unauthenticated_redirects(anonymous_client):
+    response = anonymous_client.get("/")
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["Location"]
+
+
+def test_api_route_requires_auth_json(anonymous_client):
+    response = anonymous_client.get(
+        "/api/lighting/overview",
+        headers={"Accept": "application/json"},
+    )
+    assert response.status_code == 401
+    assert response.get_json() == {"error": "authentication required"}
 
 
 def test_overview_happy_path(client, monkeypatch):
@@ -172,6 +198,13 @@ def test_set_mqtt_unavailable(client, monkeypatch):
     monkeypatch.setattr(lighting_app, "publish_command", fail)
     response = client.post("/api/lighting/devices/living_room_main/set", json={"on": True})
     assert response.status_code == 503
+
+
+def test_set_device_rejects_non_admin(client):
+    authenticate(client, role="user")
+    response = client.post("/api/lighting/devices/living_room_main/set", json={"on": True})
+    assert response.status_code == 403
+    assert response.get_json() == {"error": "admin access required"}
 
 
 def test_rooms_list_shape(client, monkeypatch):

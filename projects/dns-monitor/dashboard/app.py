@@ -1,13 +1,19 @@
+from __future__ import annotations
+
 import os
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template
 
-from ..collector.pihole import PiHoleClient
+from collector.pihole import PiHoleClient
+from shared.auth.blueprint import auth_bp
+from shared.auth.decorators import require_auth
 
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY", "dev-key-replace-in-production")
+app.register_blueprint(auth_bp)
 log = app.logger
 
 _pihole: PiHoleClient | None = None
@@ -31,11 +37,13 @@ def get_pihole() -> PiHoleClient:
 
 
 @app.route("/")
+@require_auth
 def index():
     return render_template("index.html")
 
 
 @app.route("/api/summary")
+@require_auth
 def api_summary():
     try:
         return jsonify(get_pihole().summary())
@@ -44,6 +52,7 @@ def api_summary():
 
 
 @app.route("/api/top_domains")
+@require_auth
 def api_top_domains():
     try:
         return jsonify(get_pihole().top_domains(10))
@@ -52,6 +61,7 @@ def api_top_domains():
 
 
 @app.route("/api/top_blocked")
+@require_auth
 def api_top_blocked():
     try:
         return jsonify(get_pihole().top_blocked(10))
@@ -60,6 +70,7 @@ def api_top_blocked():
 
 
 @app.route("/api/top_clients")
+@require_auth
 def api_top_clients():
     try:
         return jsonify(get_pihole().top_clients(10))
@@ -68,6 +79,7 @@ def api_top_clients():
 
 
 @app.route("/api/query_types")
+@require_auth
 def api_query_types():
     try:
         return jsonify(get_pihole().query_types())
@@ -76,6 +88,7 @@ def api_query_types():
 
 
 @app.route("/api/history")
+@require_auth
 def api_history():
     try:
         return jsonify(get_pihole().history())
@@ -84,6 +97,7 @@ def api_history():
 
 
 @app.route("/api/recent")
+@require_auth
 def api_recent():
     try:
         return jsonify(get_pihole().recent_queries(50))
