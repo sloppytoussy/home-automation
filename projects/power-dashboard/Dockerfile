@@ -1,11 +1,13 @@
-FROM python:3.12-slim
+FROM python:3.9-slim
 WORKDIR /app
 
-COPY requirements.txt .
+COPY projects/power-dashboard/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
-COPY ../../shared /app/shared
+COPY shared /app/shared
+COPY projects/power-dashboard /app/projects/power-dashboard
+WORKDIR /app/projects/power-dashboard
+ENV PYTHONPATH=/app
 
 EXPOSE 5001
 

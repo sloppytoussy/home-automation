@@ -10,9 +10,14 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
 from influxdb_client import InfluxDBClient
 
+from shared.auth.blueprint import auth_bp
+from shared.auth.decorators import require_admin, require_auth
+
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY", "dev-key-replace-in-production")
+app.register_blueprint(auth_bp)
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "tanks.yaml"
 INFLUX_REQUIRED_ENV = ("INFLUXDB_URL", "INFLUXDB_TOKEN", "INFLUXDB_ORG", "INFLUXDB_BUCKET")
 
@@ -255,11 +260,13 @@ def daily_consumption_history(days: int = 90) -> list[dict]:
 # ------------------------------------------------------------------
 
 @app.route("/")
+@require_auth
 def index():
     return render_template("index.html")
 
 
 @app.route("/api/tanks")
+@require_auth
 def api_tanks():
     tanks = load_tanks()
     out = []
@@ -288,18 +295,22 @@ def api_tanks():
 
 
 @app.route("/api/history/<tank_id>")
+@require_auth
 def api_history(tank_id: str):
     days = int(request.args.get("days", 7))
     return jsonify(level_history(tank_id, days))
 
 
 @app.route("/api/consumption")
+@require_auth
 def api_consumption():
     days = int(request.args.get("days", 90))
     return jsonify(daily_consumption_history(days))
 
 
 @app.route("/api/source/<tank_id>", methods=["POST"])
+@require_auth
+@require_admin
 def set_source(tank_id: str):
     """Toggle active source for tank2 between rain and mains."""
     data = request.get_json()

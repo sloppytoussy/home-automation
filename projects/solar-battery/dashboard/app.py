@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
 from influxdb_client import InfluxDBClient
 
+from shared.auth.blueprint import auth_bp
+from shared.auth.decorators import require_auth
+
 for _env_candidate in [
     Path(__file__).parent / ".env",
     Path(__file__).parent.parent / ".env",
@@ -20,6 +23,8 @@ for _env_candidate in [
         break
 
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY", "dev-key-replace-in-production")
+app.register_blueprint(auth_bp)
 CONFIG_PATH = Path(__file__).parent.parent / "config" / "inverter.yaml"
 INFLUX_REQUIRED_ENV = ("INFLUXDB_URL", "INFLUXDB_TOKEN", "INFLUXDB_ORG", "INFLUXDB_BUCKET")
 LEGACY_HISTORY_MAX_HOURS = 168
@@ -308,12 +313,14 @@ def influx_error_response(exc: Exception):
 
 
 @app.route("/")
+@require_auth
 def index():
     cfg = load_config()
     return render_template("index.html", system=cfg.get("system", {}), battery=cfg.get("battery", {}))
 
 
 @app.route("/api/live")
+@require_auth
 def api_live():
     try:
         return jsonify(normalize_summary(latest_solar_reading()))
@@ -322,6 +329,7 @@ def api_live():
 
 
 @app.route("/api/history/<field>")
+@require_auth
 def api_history(field: str):
     field_aliases = {
         "pv_power": "pv_power_w",
@@ -367,6 +375,7 @@ def api_history(field: str):
 
 
 @app.route("/api/yield")
+@require_auth
 def api_yield():
     try:
         return jsonify([
@@ -378,6 +387,7 @@ def api_yield():
 
 
 @app.route("/api/solar/summary")
+@require_auth
 def api_solar_summary():
     try:
         return jsonify(normalize_summary(latest_solar_reading()))
@@ -388,6 +398,7 @@ def api_solar_summary():
 
 
 @app.route("/api/solar/battery")
+@require_auth
 def api_solar_battery():
     try:
         return jsonify(battery_history())
@@ -398,6 +409,7 @@ def api_solar_battery():
 
 
 @app.route("/api/solar/pv")
+@require_auth
 def api_solar_pv():
     try:
         return jsonify(pv_yield_history())
@@ -408,6 +420,7 @@ def api_solar_pv():
 
 
 @app.route("/api/solar/history")
+@require_auth
 def api_solar_history():
     try:
         return jsonify(daily_energy_history(parse_history_days()))
@@ -418,6 +431,7 @@ def api_solar_history():
 
 
 @app.route("/api/solar/status")
+@require_auth
 def api_solar_status():
     try:
         return jsonify(solar_status(latest_solar_reading()))

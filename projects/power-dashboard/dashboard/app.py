@@ -9,6 +9,9 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
 from influxdb_client import InfluxDBClient
 
+from shared.auth.blueprint import auth_bp
+from shared.auth.decorators import require_admin, require_auth
+
 # Load .env from explicit paths so it works in sandboxed environments
 # (avoids os.getcwd() which some sandboxes block)
 for _env_candidate in [
@@ -24,6 +27,8 @@ else:
     pass
 
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY", "dev-key-replace-in-production")
+app.register_blueprint(auth_bp)
 log = app.logger
 
 APPLIANCES_CONFIG = Path(__file__).parent.parent / "config" / "appliances.yaml"
@@ -310,11 +315,14 @@ def history_remaining(days: int = 30) -> list[dict]:
 # ------------------------------------------------------------------
 
 @app.route("/")
+@require_auth
 def index():
     return render_template("index.html")
 
 
 @app.route("/entry", methods=["GET", "POST"])
+@require_auth
+@require_admin
 def entry():
     error = None
     success = False
@@ -338,6 +346,8 @@ def entry():
 
 
 @app.route("/appliances", methods=["GET", "POST"])
+@require_auth
+@require_admin
 def appliances_page():
     rooms = load_rooms()
     error = None
@@ -365,6 +375,7 @@ def appliances_page():
 # ------------------------------------------------------------------
 
 @app.route("/api/summary")
+@require_auth
 def api_summary():
     reading = last_meter_reading()
     rate = consumption_rate_kwh_per_day()
@@ -395,28 +406,33 @@ def api_summary():
 
 
 @app.route("/api/history/daily")
+@require_auth
 def api_history_daily():
     days = int(request.args.get("days", 90))
     return jsonify(daily_kwh_history(days))
 
 
 @app.route("/api/history/load")
+@require_auth
 def api_history_load():
     days = int(request.args.get("days", 7))
     return jsonify(history_load(days))
 
 
 @app.route("/api/history/remaining")
+@require_auth
 def api_history_remaining():
     return jsonify(history_remaining(30))
 
 
 @app.route("/api/appliances")
+@require_auth
 def api_appliances():
     return jsonify(full_appliance_list())
 
 
 @app.route("/api/topups")
+@require_auth
 def api_topups():
     return jsonify(topup_history())
 
@@ -455,6 +471,7 @@ def influx_error_response(exc: Exception):
 
 
 @app.route("/api/calculator/bill-estimate", methods=["POST"])
+@require_auth
 def api_calculator_bill_estimate():
     from dashboard.calculator import calculate_tiered_cost
 
@@ -467,6 +484,7 @@ def api_calculator_bill_estimate():
 
 
 @app.route("/api/calculator/net-consumption")
+@require_auth
 def api_calculator_net_consumption():
     from dashboard.calculator import calculate_net_consumption
 
@@ -494,6 +512,7 @@ def api_calculator_net_consumption():
 
 
 @app.route("/api/calculator/load-breakdown")
+@require_auth
 def api_calculator_load_breakdown():
     from dashboard.calculator import load_breakdown
 
@@ -522,6 +541,7 @@ def api_calculator_load_breakdown():
 
 
 @app.route("/api/calculator/variance")
+@require_auth
 def api_calculator_variance():
     from dashboard.calculator import detect_variance
 
@@ -562,6 +582,7 @@ def api_calculator_variance():
 
 
 @app.route("/api/calculator/projection", methods=["POST"])
+@require_auth
 def api_calculator_projection():
     from dashboard.calculator import project_monthly
 

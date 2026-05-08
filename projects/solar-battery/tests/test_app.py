@@ -16,7 +16,21 @@ from dashboard import app as solar_app
 @pytest.fixture
 def client():
     solar_app.app.config.update(TESTING=True)
+    test_client = solar_app.app.test_client()
+    authenticate(test_client)
+    return test_client
+
+
+@pytest.fixture
+def anonymous_client():
+    solar_app.app.config.update(TESTING=True)
     return solar_app.app.test_client()
+
+
+def authenticate(client, role: str = "admin"):
+    with client.session_transaction() as saved_session:
+        saved_session["username"] = "owner" if role == "admin" else "viewer"
+        saved_session["role"] = role
 
 
 def sample_row(**overrides):
@@ -375,7 +389,23 @@ def test_solar_status_without_inverter_output_is_not_inverter_online():
     assert data["inverter_online"] is False
 
 
+def test_index_route_requires_auth(anonymous_client):
+    response = anonymous_client.get("/")
+    assert response.status_code == 302
+    assert "/auth/login" in response.headers["Location"]
+
+
+def test_api_route_requires_auth_json(anonymous_client):
+    response = anonymous_client.get(
+        "/api/solar/summary",
+        headers={"Accept": "application/json"},
+    )
+    assert response.status_code == 401
+    assert response.get_json() == {"error": "authentication required"}
+
+
 def test_index_route_returns_dashboard_html(client, monkeypatch):
+    authenticate(client)
     monkeypatch.setattr(solar_app, "load_config", lambda: {"system": {}, "battery": {}})
     response = client.get("/")
     body = response.get_data(as_text=True)
@@ -386,6 +416,7 @@ def test_index_route_returns_dashboard_html(client, monkeypatch):
 
 
 def test_index_route_handles_missing_config(client, monkeypatch):
+    authenticate(client)
     monkeypatch.setattr(solar_app, "load_config", lambda: {})
     response = client.get("/")
     assert response.status_code == 200
