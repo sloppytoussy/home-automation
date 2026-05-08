@@ -225,3 +225,5 @@ __marimo__/
 .claude/worktrees/
 .claude/prompts/
 .codex/tasks/
+.claude/prompts/
+.codex/tasks/
