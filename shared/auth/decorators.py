@@ -8,6 +8,13 @@ from flask import jsonify, redirect, request
 from .manager import get_session_user
 
 
+# Decoration convention: write routes that must be admin-only carry both
+# @require_auth (outer) and @require_admin (inner).  The outer @require_auth
+# ensures that unauthenticated browser clients receive a redirect to the login
+# page rather than a raw JSON 401 from @require_admin.  This stacking is
+# intentional and consistent across all dashboards.
+
+
 def wants_json_response() -> bool:
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return True

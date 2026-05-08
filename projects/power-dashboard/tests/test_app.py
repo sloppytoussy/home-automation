@@ -115,6 +115,47 @@ def test_manual_entry_allows_admin(client, monkeypatch):
     writer.write_meter_reading.assert_called_once()
 
 
+def test_appliances_rejects_non_admin(client, monkeypatch):
+    writer = MagicMock()
+    writer_module = types.SimpleNamespace(PowerWriter=lambda: writer)
+    monkeypatch.setitem(sys.modules, "collector.writer", writer_module)
+    authenticate(client, role="user")
+
+    response = client.post(
+        "/appliances",
+        data={
+            "room": "Kitchen",
+            "appliance": "Fridge",
+            "watts": "120",
+            "daily_hours": "8",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.get_json() == {"error": "admin access required"}
+    writer.write_appliance_reading.assert_not_called()
+
+
+def test_appliances_allows_admin(client, monkeypatch):
+    writer = MagicMock()
+    writer_module = types.SimpleNamespace(PowerWriter=lambda: writer)
+    monkeypatch.setitem(sys.modules, "collector.writer", writer_module)
+    monkeypatch.setattr("dashboard.app.load_rooms", lambda: [])
+
+    response = client.post(
+        "/appliances",
+        data={
+            "room": "Kitchen",
+            "appliance": "Fridge",
+            "watts": "120",
+            "daily_hours": "8",
+        },
+    )
+
+    assert response.status_code == 200
+    writer.write_appliance_reading.assert_called_once()
+
+
 @pytest.mark.parametrize(
     "payload,expected_cost",
     [

@@ -472,6 +472,7 @@ def influx_error_response(exc: Exception):
 
 @app.route("/api/calculator/bill-estimate", methods=["POST"])
 @require_auth
+@require_admin
 def api_calculator_bill_estimate():
     from dashboard.calculator import calculate_tiered_cost
 
@@ -583,6 +584,7 @@ def api_calculator_variance():
 
 @app.route("/api/calculator/projection", methods=["POST"])
 @require_auth
+@require_admin
 def api_calculator_projection():
     from dashboard.calculator import project_monthly
 
