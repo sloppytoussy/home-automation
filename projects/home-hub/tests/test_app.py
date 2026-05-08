@@ -340,7 +340,8 @@ def test_index_unauthenticated_redirects(client):
 
 def test_index_authenticated_returns_200(client):
     with client.session_transaction() as sess:
-        sess["user"] = {"username": "owner", "role": "admin"}
+        sess["username"] = "owner"
+        sess["role"] = "admin"
     response = client.get("/")
     assert response.status_code == 200
     assert b"Home Automation" in response.data

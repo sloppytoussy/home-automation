@@ -11,37 +11,11 @@ from urllib.parse import urljoin
 import requests
 import yaml
 from dotenv import load_dotenv
-from flask import Blueprint, Flask, jsonify, redirect, render_template, session, url_for
+from flask import Flask, jsonify, render_template
 from yaml import YAMLError
 
-try:
-    from shared.auth import auth_bp, get_session_user, require_auth
-except ModuleNotFoundError:
-    auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
-
-    @auth_bp.route("/login")
-    def login():
-        return "Login required", 200
-
-    @auth_bp.route("/logout")
-    def logout():
-        session.clear()
-        return redirect(url_for("auth.login"))
-
-    def get_session_user() -> dict[str, str | None]:
-        return session.get("user") or {
-            "username": session.get("username"),
-            "role": session.get("role"),
-        }
-
-    def require_auth(view):
-        def wrapped(*args, **kwargs):
-            if not (session.get("user") or session.get("username")):
-                return redirect(url_for("auth.login"))
-            return view(*args, **kwargs)
-
-        wrapped.__name__ = view.__name__
-        return wrapped
+from shared.auth import auth_bp, require_auth
+from shared.auth.manager import get_session_user
 
 
 for _env_candidate in [
