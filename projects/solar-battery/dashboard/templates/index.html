@@ -364,6 +364,7 @@
       const [summary, setSummary] = useState(EMPTY_SUMMARY);
       const [status, setStatus] = useState({ data_available: false, cerbo_online: false, mppt_online: false, inverter_online: false });
       const [pv, setPv] = useState([]);
+      const [currentUser, setCurrentUser] = useState(null);
 
       async function refresh() {
         const [summaryRes, statusRes, pvRes] = await Promise.all([
@@ -382,6 +383,26 @@
         return () => clearInterval(timer);
       }, []);
 
+      useEffect(() => {
+        fetch("/auth/me")
+          .then(r => r.json())
+          .then(data => {
+            if (!data.logged_in) {
+              window.location.href = "/auth/login?next=" + encodeURIComponent(window.location.pathname);
+            } else {
+              setCurrentUser(data);
+            }
+          })
+          .catch(() => {
+            window.location.href = "/auth/login";
+          });
+      }, []);
+
+      function handleLogout() {
+        fetch("/auth/logout", {method: "POST"})
+          .then(() => { window.location.href = "/auth/login"; });
+      }
+
       const gridSub = useMemo(() => {
         const value = summary.grid_power_w;
         if (value === null || value === undefined) return "Waiting";
@@ -392,7 +413,29 @@
         <>
           <header>
             <h1>Solar Battery Dashboard</h1>
-            <span className={`status-pill ${status.cerbo_online ? "online" : "offline"}`}>Cerbo GX</span>
+            <div style={{display: "flex", alignItems: "center", gap: "8px"}}>
+              <span className={`status-pill ${status.cerbo_online ? "online" : "offline"}`}>Cerbo GX</span>
+              {currentUser && (
+                <>
+                  <span style={{fontSize: "13px", color: "#cbd5e1"}}>
+                    {currentUser.display_name || currentUser.username}
+                  </span>
+                  <button
+                    onClick={handleLogout}
+                    style={{
+                      background: "transparent",
+                      border: "1px solid #334155",
+                      borderRadius: "6px",
+                      color: "#f8fafc",
+                      padding: "5px 10px",
+                      fontSize: "12px",
+                    }}
+                  >
+                    Sign out
+                  </button>
+                </>
+              )}
+            </div>
           </header>
           <main>
             <div className={`banner ${summary.data_available ? "" : "visible"}`}>

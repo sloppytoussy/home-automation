@@ -240,7 +240,7 @@ function useLightingData() {
   return { overview, devices, rooms, loading, error, refresh };
 }
 
-function Topbar({ theme, setTheme, refresh, loading }) {
+function Topbar({ theme, setTheme, refresh, loading, currentUser, handleLogout }) {
   return (
     <header className="topbar">
       <div className="brand">
@@ -252,6 +252,26 @@ function Topbar({ theme, setTheme, refresh, loading }) {
       </div>
       <div className="topbar-right">
         <div className="live-pill">Live</div>
+        {currentUser && (
+          <div style={{display: "flex", alignItems: "center", gap: "8px"}}>
+            <span style={{fontSize: "13px", color: "var(--muted)"}}>
+              {currentUser.display_name || currentUser.username}
+            </span>
+            <button
+              onClick={handleLogout}
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-sm)",
+                color: "var(--text-2)",
+                padding: "7px 10px",
+                fontSize: "12px",
+              }}
+            >
+              Sign out
+            </button>
+          </div>
+        )}
         <button className="icon-btn" onClick={refresh} title="Refresh">{icon.refresh}</button>
         <button className="icon-btn" onClick={() => setTheme(theme === "light" ? "dark" : "light")} title="Theme">
           {theme === "light" ? icon.moon : icon.sun}
@@ -339,24 +359,47 @@ function Overview({ overview, devices, rooms }) {
   );
 }
 
-function Devices({ devices }) {
+function Devices({ devices, currentUser, toggleDevice }) {
   return (
     <section className="table-card">
       <table>
         <thead>
-          <tr><th>Name</th><th>Room</th><th>Type</th><th>Status</th><th>Power</th><th>Brightness</th><th>Last seen</th></tr>
+          <tr><th>Name</th><th>Room</th><th>Type</th><th>Status</th><th>Power</th><th>Brightness</th><th>Last seen</th>{currentUser?.role === "admin" && <th style={{width:"32px"}}></th>}</tr>
         </thead>
         <tbody>
-          {devices.length === 0 && <tr><td colSpan="7" className="muted">No devices available</td></tr>}
+          {devices.length === 0 && <tr><td colSpan={currentUser?.role === "admin" ? 8 : 7} className="muted">No devices available</td></tr>}
           {devices.map((device) => (
             <tr key={device.device_id}>
               <td><strong>{device.name}</strong><div className="muted mono">{device.device_id}</div></td>
               <td>{title(device.room)}</td>
               <td>{device.device_type}<div className="muted">{device.generation}</div></td>
-              <td><span className={`status-pill ${device.online ? (device.is_on ? "on" : "") : "offline"}`}><span className={`state-dot ${device.is_on ? "on" : ""}`} />{device.online ? (device.is_on ? "On" : "Off") : "Offline"}</span></td>
+              <td>
+                <button
+                  onClick={() => toggleDevice(device.device_id, !device.is_on)}
+                  style={{
+                    padding: "3px 10px",
+                    borderRadius: "20px",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    fontWeight: "500",
+                    background: device.is_on ? "var(--ok)" : "var(--surface-3)",
+                    color: device.is_on ? "#fff" : "var(--text-2)",
+                  }}
+                >
+                  {device.is_on ? "On" : "Off"}
+                </button>
+              </td>
               <td className="mono">{device.power_w == null ? "—" : `${fmt(device.power_w, 1)} W`}</td>
               <td className="mono">{device.brightness_pct == null ? "—" : `${fmt(device.brightness_pct)}%`}</td>
               <td>{rel(device.last_seen)}</td>
+              {currentUser?.role === "admin" && (
+                <td style={{width:"32px", textAlign:"center"}}>
+                  <span title="Admin: device config available in Phase 5" style={{fontSize:"11px", color:"var(--muted)", cursor:"default"}}>
+                    ⚙
+                  </span>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -372,15 +415,44 @@ function ComingSoon({ tab }) {
 function App() {
   const [tab, setTab] = useState("overview");
   const [theme, setTheme] = useState("light");
+  const [currentUser, setCurrentUser] = useState(null);
   const { overview, devices, rooms, loading, error, refresh } = useLightingData();
+  useEffect(() => {
+    fetch("/auth/me")
+      .then(r => r.json())
+      .then(data => {
+        if (!data.logged_in) {
+          window.location.href = "/auth/login?next=" + encodeURIComponent(window.location.pathname);
+        } else {
+          setCurrentUser(data);
+        }
+      })
+      .catch(() => {
+        window.location.href = "/auth/login";
+      });
+  }, []);
   useEffect(() => document.documentElement.setAttribute("data-theme", theme), [theme]);
+
+  function handleLogout() {
+    fetch("/auth/logout", {method: "POST"})
+      .then(() => { window.location.href = "/auth/login"; });
+  }
+
+  function toggleDevice(deviceId, newState) {
+    fetch(`/api/lighting/devices/${deviceId}/set`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({on: newState})
+    }).then(() => refresh());
+  }
+
   return (
     <div className="app">
-      <Topbar theme={theme} setTheme={setTheme} refresh={refresh} loading={loading} />
+      <Topbar theme={theme} setTheme={setTheme} refresh={refresh} loading={loading} currentUser={currentUser} handleLogout={handleLogout} />
       <nav className="tab-nav">{TABS.map(([id, label]) => <button key={id} className={`tab-btn ${tab === id ? "active" : ""}`} onClick={() => setTab(id)}>{label}</button>)}</nav>
       {error && <div className="banner"><span className="banner-dot" /><span>{error}</span></div>}
       {tab === "overview" && <Overview overview={overview} devices={devices} rooms={rooms} />}
-      {tab === "devices" && <Devices devices={devices} />}
+      {tab === "devices" && <Devices devices={devices} currentUser={currentUser} toggleDevice={toggleDevice} />}
       {!["overview", "devices"].includes(tab) && <ComingSoon tab={tab} />}
     </div>
   );

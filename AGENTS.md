@@ -137,6 +137,9 @@ HUB_SERVICE_<ID>_URL
   blueprint and decorators without duplicating auth logic.
 - **Auth users file is private.** `infrastructure/users.yaml` contains bcrypt
   password hashes and is gitignored; commit only `infrastructure/users.yaml.example`.
+- **Dashboard headers are auth-aware.** Frontend dashboards fetch `/auth/me` on
+  load, redirect logged-out sessions to `/auth/login`, and use `POST /auth/logout`
+  for sign-out controls.
 - **Home hub uses hub.yaml as source of truth.** Service cards, ports, and URLs
   come from `projects/home-hub/config/hub.yaml`; runtime service URL overrides
   use `HUB_SERVICE_{ID}_URL`.
@@ -190,12 +193,19 @@ HUB_SERVICE_<ID>_URL
 | `feature/lighting-phase1` | Lighting foundation complete — Shelly Gen1/Gen2 MQTT+HTTP, Flask API, 6-tab dashboard, 96 tests passing |
 | `feature/auth-foundation` | Shared auth foundation complete — Blueprint, YAML user store, bcrypt helper, lighting-control proof-of-concept |
 | `feature/home-hub` | Home hub scaffold complete — authenticated overview, fixture dev server, Docker service, 48 tests passing |
+| `feature/dashboard-guards` | Complete — authenticated routes registered across dashboards |
+| `feature/role-aware-ui` | Frontend role-aware headers complete; lighting toggle user-role backend guard remains unresolved |
 
 ## Active roadmap
 
 ### Completed
 - [x] Auth foundation: shared Flask Blueprint, bcrypt-backed YAML user store,
   login/logout/me routes, and lighting-control index-route integration
+- [x] Dashboard guards: all dashboard routes register shared auth and protect
+  dashboard entry points.
+- [x] Role-aware UI: dashboard headers fetch `/auth/me`, show current user, and
+  post logout; home-hub shows admin-only badge/settings placeholder; dns-monitor
+  uses vanilla JS auth UI.
 
 ### Lighting control
 - [x] Phase 1: scaffold, Shelly Gen1/Gen2 MQTT + HTTP collectors, Flask API, 6-tab dashboard
@@ -217,7 +227,7 @@ HUB_SERVICE_<ID>_URL
 - [x] Fixture-backed dev server:
   `cd projects/home-hub && python -m tests.dev_server`
 - [x] Docker service added as `home-hub`
-- [ ] Phase 3 branch: `feature/dashboard-guards`
+- [x] Phase 3 branch: `feature/dashboard-guards`
 
 ### Solar/battery dashboard
 - [x] Phase 1 dashboard UI with placeholder Cerbo GX state
@@ -242,3 +252,10 @@ SOC, voltage, current, and power. No cell-level dashboard fields are planned.
 
 - Alerts #1–7 resolved on `main`: dashboard JSON error responses no longer
   expose raw exception messages.
+
+## Known issues
+
+- Lighting role-aware toggle test currently fails for user-role sessions because
+  `/api/lighting/devices/<device_id>/set` still has `@require_admin`; resolving
+  this requires an `app.py` change, which was out of scope for the role-aware UI
+  frontend session.

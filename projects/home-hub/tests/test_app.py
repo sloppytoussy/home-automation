@@ -68,6 +68,24 @@ def client(monkeypatch):
     return hub_app.app.test_client()
 
 
+@pytest.fixture
+def admin_session(client):
+    with client.session_transaction() as sess:
+        sess["username"] = "owner"
+        sess["role"] = "admin"
+        sess["display_name"] = "Owner"
+    return client
+
+
+@pytest.fixture
+def user_session(client):
+    with client.session_transaction() as sess:
+        sess["username"] = "viewer"
+        sess["role"] = "user"
+        sess["display_name"] = "Viewer"
+    return client
+
+
 def patch_requests(monkeypatch, overrides=None, failures=None):
     overrides = overrides or {}
     failures = failures or set()
@@ -345,6 +363,20 @@ def test_index_authenticated_returns_200(client):
     response = client.get("/")
     assert response.status_code == 200
     assert b"Home Automation" in response.data
+
+
+def test_auth_me_admin_returns_admin_role(client, admin_session):
+    response = client.get("/auth/me")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["role"] == "admin"
+    assert data["logged_in"] is True
+
+
+def test_auth_me_user_returns_user_role(client, user_session):
+    response = client.get("/auth/me")
+    assert response.status_code == 200
+    assert response.get_json()["role"] == "user"
 
 
 def test_config_url_override(monkeypatch, tmp_path):
