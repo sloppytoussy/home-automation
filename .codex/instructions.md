@@ -18,6 +18,7 @@ projects/
   water-monitor/       Port 5002
   solar-battery/       Port 5003
   dns-monitor/         Port 5000
+  lighting-control/    Port 5005
 shared/
   db/influx.py         InfluxDB 2.7 wrapper — use this, never duplicate
   mqtt/client.py       Mosquitto helper — use this, never duplicate
@@ -98,7 +99,7 @@ and report it rather than editing without permission.
 <type>(<scope>): <short description>
 
 types: feat, fix, test, refactor, chore, docs
-scope: power-dashboard, water-monitor, solar-battery, dns-monitor, shared
+scope: power-dashboard, water-monitor, solar-battery, dns-monitor, lighting-control, shared
 
 Examples:
   feat(power-dashboard): add MQTT collector for Shelly Pro 3EM

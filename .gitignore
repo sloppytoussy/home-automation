@@ -217,6 +217,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 .codex/session-*
+!.codex/session-close.md
 .codex/*.log
 .DS_Store
 **/.DS_Store
